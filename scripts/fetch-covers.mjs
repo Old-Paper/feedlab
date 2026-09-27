@@ -246,6 +246,13 @@ async function fetchYouTube() {
     if (!data) throw new Error('ytInitialData not found (consent page?)')
     const items = []
     collectVideoRenderers(data, items, new Set())
+    const nVideo = items.filter((i) => i.kind === 'video').length
+    const nLockup = items.filter((i) => i.kind === 'lockup').length
+    console.warn(`[yt] hot debug: htmlLen=${html.length} items=${items.length} video=${nVideo} lockup=${nLockup}`)
+    if (items[0]) {
+      const sample = items[0].kind === 'lockup' ? mapYtLockup(items[0].r) : mapYt(items[0].r)
+      console.warn(`[yt] hot sample: ${JSON.stringify(sample).slice(0, 220)}`)
+    }
     const seen = new Set()
     for (const item of items) {
       if (hot.length >= HOT_N) break
@@ -257,6 +264,33 @@ async function fetchYouTube() {
     }
   } catch (e) {
     console.warn('[yt] hot failed:', e.message)
+  }
+  // trending 解析失败时的兜底: 公共 Piped 实例的 trending 接口
+  if (hot.length < 4) {
+    const instances = ['https://pipedapi.kavin.rocks', 'https://pipedapi.adminforge.de', 'https://api.piped.private.coffee']
+    for (const base of instances) {
+      if (hot.length >= 4) break
+      try {
+        const list = await timedFetch(`${base}/trending?region=US`, {})
+        if (!Array.isArray(list) || list.length === 0) continue
+        for (const it of list) {
+          if (hot.length >= HOT_N) break
+          const videoId = String(it.url ?? '').split('v=')[1] ?? ''
+          if (!videoId) continue
+          hot.push({
+            id: `yt-${videoId}`,
+            title: it.title ?? '',
+            channel: it.uploaderName ?? '',
+            views: it.views ?? 0,
+            durationSec: it.duration ?? 0,
+            publishedHoursAgo: it.uploaded ? Math.max(1, Math.round((Date.now() - it.uploaded) / 3600000)) : 48,
+            pic: `https://i.ytimg.com/vi/${videoId}/hq720.jpg`,
+          })
+        }
+      } catch (e) {
+        console.warn(`[yt] piped ${base} failed:`, e.message)
+      }
+    }
   }
   // 不太火: 按上传时间排序的搜索结果,只保留播放量 < 5万 的视频
   const keywords = ['minecraft', 'cooking', 'tech review', 'vlog', 'study', 'diy']
