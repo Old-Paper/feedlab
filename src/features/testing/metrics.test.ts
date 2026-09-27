@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyFilter, computeBlindMetrics, computeFindMetrics, NO_FILTER } from './metrics'
+import { applyFilter, computeBlindMetrics, computeFindMetrics, NO_FILTER, summarizeExperimentSnapshots } from './metrics'
 import type { TestSession } from '../../types'
 
 let seq = 0
@@ -176,5 +176,114 @@ describe('applyFilter — 混合 platform/device/mode', () => {
   it('只按模式过滤', () => {
     const rows = applyFilter(sessions, { platform: 'all', device: 'all', mode: 'blind' })
     expect(rows).toHaveLength(3)
+  })
+})
+
+
+describe('summarizeExperimentSnapshots', () => {
+  it('全部为旧记录(无快照)时返回 unknown, 不猜测环境', () => {
+    const result = summarizeExperimentSnapshots([
+      makeSession({ candidateId: 'A' }),
+      makeSession({ candidateId: 'B' }),
+    ])
+    expect(result.competitionEnvironment).toBe('unknown')
+    expect(result.lockCompetitionEnvironment).toBe('unknown')
+    expect(result.useFixedSeed).toBe('unknown')
+    expect(result.mockCount).toBe('unknown')
+    expect(result.legacyCount).toBe(2)
+    expect(result.snapshotCount).toBe(0)
+  })
+
+  it('空数据同样返回 unknown', () => {
+    const result = summarizeExperimentSnapshots([])
+    expect(result.competitionEnvironment).toBe('unknown')
+    expect(result.legacyCount).toBe(0)
+  })
+
+  it('快照一致时返回具体值', () => {
+    const snap = {
+      competitionEnvironment: 'minecraft' as const,
+      lockCompetitionEnvironment: true,
+      useFixedSeed: true,
+      randomizeFeedOrder: true,
+      randomizeMetadata: false,
+      mockCount: 12,
+    }
+    const result = summarizeExperimentSnapshots([
+      makeSession({ candidateId: 'A', experimentSnapshot: snap }),
+      makeSession({ candidateId: 'B', experimentSnapshot: snap }),
+    ])
+    expect(result.competitionEnvironment).toBe('minecraft')
+    expect(result.lockCompetitionEnvironment).toBe(true)
+    expect(result.useFixedSeed).toBe(true)
+    expect(result.mockCount).toBe(12)
+    expect(result.legacyCount).toBe(0)
+  })
+
+  it('不同环境混合时返回 mixed', () => {
+    const snapA = {
+      competitionEnvironment: 'minecraft' as const,
+      lockCompetitionEnvironment: false,
+      useFixedSeed: false,
+      randomizeFeedOrder: true,
+      randomizeMetadata: true,
+      mockCount: 12,
+    }
+    const snapB = {
+      competitionEnvironment: 'competitors' as const,
+      lockCompetitionEnvironment: false,
+      useFixedSeed: false,
+      randomizeFeedOrder: true,
+      randomizeMetadata: true,
+      mockCount: 12,
+    }
+    const result = summarizeExperimentSnapshots([
+      makeSession({ candidateId: 'A', experimentSnapshot: snapA }),
+      makeSession({ candidateId: 'B', experimentSnapshot: snapB }),
+    ])
+    expect(result.competitionEnvironment).toBe('mixed')
+  })
+
+  it('同环境但锁定状态不同 → lock 为 mixed', () => {
+    const snapA = {
+      competitionEnvironment: 'site' as const,
+      lockCompetitionEnvironment: true,
+      useFixedSeed: false,
+      randomizeFeedOrder: true,
+      randomizeMetadata: true,
+      mockCount: 12,
+    }
+    const snapB = {
+      competitionEnvironment: 'site' as const,
+      lockCompetitionEnvironment: false,
+      useFixedSeed: false,
+      randomizeFeedOrder: true,
+      randomizeMetadata: true,
+      mockCount: 12,
+    }
+    const result = summarizeExperimentSnapshots([
+      makeSession({ experimentSnapshot: snapA }),
+      makeSession({ experimentSnapshot: snapB }),
+    ])
+    expect(result.competitionEnvironment).toBe('site')
+    expect(result.lockCompetitionEnvironment).toBe('mixed')
+  })
+
+  it('混合新旧记录: 有快照部分参与汇总, 旧记录数单独提示', () => {
+    const snap = {
+      competitionEnvironment: 'site' as const,
+      lockCompetitionEnvironment: false,
+      useFixedSeed: false,
+      randomizeFeedOrder: true,
+      randomizeMetadata: true,
+      mockCount: 12,
+    }
+    const result = summarizeExperimentSnapshots([
+      makeSession({ experimentSnapshot: snap }),
+      makeSession({}), // 旧记录
+    ])
+    expect(result.competitionEnvironment).toBe('site')
+    expect(result.snapshotCount).toBe(1)
+    expect(result.legacyCount).toBe(1)
   })
 })

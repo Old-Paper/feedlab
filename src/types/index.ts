@@ -219,6 +219,26 @@ export interface GeneratedFeed {
 
 // --- Sessions --------------------------------------------------------------
 
+/**
+ * 实验环境快照: TestSession 创建时写入, 之后不可变。
+ * 用于让历史结果忠实反映"当时真正发生了什么", 而不是当前项目设置。
+ */
+export interface ExperimentSnapshot {
+  competitionEnvironment: CompetitionEnvironment
+  lockCompetitionEnvironment: boolean
+  useFixedSeed: boolean
+  randomizeFeedOrder: boolean
+  randomizeMetadata: boolean
+  mockCount: number
+  useRealPool?: boolean
+  /** 锁定竞争环境时, 本次运行共用的环境种子 */
+  environmentSeed?: string
+  /** 实验开始时配置的基础 Seed (useFixedSeed=true 时等于 runSeed) */
+  baseSeed?: string
+  /** 一次完整测试运行的种子 */
+  runSeed?: string
+}
+
 export interface ViewportSize {
   width: number
   height: number
@@ -246,6 +266,8 @@ export interface TestSession {
   wrongClicks: number
   /** Configured exposure seconds (0 = unlimited). */
   exposureDuration: number
+  /** 实验环境快照; 旧版本记录没有此字段, 展示时按 unknown 处理。 */
+  experimentSnapshot?: ExperimentSnapshot
 }
 
 // --- Assets ----------------------------------------------------------------

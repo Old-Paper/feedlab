@@ -1,18 +1,24 @@
 import { Database, FlaskConical, Layers, Lock, Monitor, Shuffle, Timer } from 'lucide-react'
-import type { BlindDuration, CompetitionEnvironment, Device, Platform } from '../types'
+import type { BlindDuration, Device, Platform } from '../types'
+
+// 实验配置摘要 —— 让创作者在开始测试前清楚:
+// 在什么环境、比较几个方案、跑多少轮、干扰视频是否公平。
+// 实验进行前读取当前 TestSettings(展示"即将运行的配置");
+// 实验结束后的 Results 必须改读 TestSession 快照, 不能绑定当前项目设置。
+// 只用于完整项目模式, 不进入 Quick Mode。
 
 export interface ExperimentSummaryProps {
   platform: Platform
   device: Device
-  environment: CompetitionEnvironment
+  /** 调用方格式化好的竞争环境文案 */
   environmentLabel: string
   candidateCount: number
   rounds: number
   blindDuration: BlindDuration
-  lockEnvironment: boolean
+  /** 调用方格式化好的竞争池锁定文案 */
+  lockText: string
   useFixedSeed: boolean
   seed?: string
-  variant?: 'panel' | 'compact'
 }
 
 function platformLabel(p: Platform): string {
@@ -39,29 +45,9 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
   )
 }
 
-/**
- * 实验配置摘要 —— 让创作者在开始测试前清楚:
- * 在什么环境、比较几个方案、跑多少轮、干扰视频是否公平。
- * 只用于完整项目模式, 不进入 Quick Mode。
- */
 export function ExperimentSummary(props: ExperimentSummaryProps) {
   const perCandidate = Math.max(1, Math.ceil(props.rounds / Math.max(1, props.candidateCount)))
-  const seedText = props.useFixedSeed ? `固定 Seed（${props.seed ?? ''}）` : '随机 Seed'
-
-  if (props.variant === 'compact') {
-    return (
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
-        <span>
-          实验环境:{platformLabel(props.platform)} · {deviceLabel(props.device)}
-        </span>
-        <span>竞争环境:{props.environmentLabel}</span>
-        <span>
-          {props.candidateCount} 个方案 · {props.rounds} 轮
-        </span>
-        <span>{props.lockEnvironment ? '已锁定竞争池' : '每轮随机环境'}</span>
-      </div>
-    )
-  }
+  const seedText = props.useFixedSeed ? `固定 Seed（${props.seed ?? ''}）` : '随机 Seed（每次运行不同）'
 
   return (
     <div className="rounded-lg border border-[#23252e] bg-[#12141a] p-4">
@@ -78,19 +64,7 @@ export function ExperimentSummary(props: ExperimentSummaryProps) {
         />
         <Row icon={<Timer size={12} />} label="展示时间" value={durationLabel(props.blindDuration)} />
         <Row icon={<Shuffle size={12} />} label="位置" value="每个位置均衡轮换" />
-        <Row
-          icon={<Lock size={12} />}
-          label="竞争池"
-          value={
-            props.lockEnvironment ? (
-              <span>
-                已锁定 —— 不同方案面对<span className="text-emerald-300/90">同一组干扰视频</span>, 比较更公平
-              </span>
-            ) : (
-              '未锁定 —— 每轮随机抽取干扰视频'
-            )
-          }
-        />
+        <Row icon={<Lock size={12} />} label="竞争池" value={props.lockText} />
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#23252e] pt-2.5 text-[11px] text-zinc-500">
         <span>{seedText}</span>
@@ -100,13 +74,24 @@ export function ExperimentSummary(props: ExperimentSummaryProps) {
   )
 }
 
-/** 竞争环境的展示文案 */
-export function environmentLabel(
-  env: CompetitionEnvironment,
-  useRealPool: boolean,
-  competitorCount: number,
-): string {
-  if (env === 'minecraft') return useRealPool ? 'Minecraft（真实池）' : 'Minecraft（内置库）'
-  if (env === 'competitors') return `我的竞品库（${competitorCount} 条启用）`
-  return useRealPool ? '全站（真实热门池）' : '全站（内置干扰库）'
+/** 紧凑版: 结果页/AB 页顶部单行摘要, 展示文案由调用方根据历史快照格式化。 */
+export function ExperimentSummaryCompact({
+  platformText,
+  environmentLabel,
+  countText,
+  lockText,
+}: {
+  platformText: string
+  environmentLabel: string
+  countText: string
+  lockText: string
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
+      <span>实验环境:{platformText}</span>
+      <span>竞争环境:{environmentLabel}</span>
+      <span>{countText}</span>
+      <span>{lockText}</span>
+    </div>
+  )
 }

@@ -5,7 +5,8 @@ import { sessionRepository } from '../db/repositories/sessionRepository'
 import { applyFilter, computeBlindMetrics, computeFindMetrics, envLabel, NO_FILTER, type BlindTestMetric, type FindTargetMetric, type SessionFilter } from '../features/testing/metrics'
 import { formatCI, formatPercent, intervalsOverlap, sampleSizeHint, wilsonInterval } from '../features/testing/statistics'
 import { Button, Badge, ConfirmModal, EmptyState, Segmented, SectionCard, Checkbox } from '../components/ui'
-import { ExperimentSummary, environmentLabel } from '../components/ExperimentSummary'
+import { ExperimentSummaryCompact } from '../components/ExperimentSummary'
+import { formatEnvironmentDisplay, formatLockDisplay, summarizeExperimentSnapshots } from '../features/testing/metrics'
 import { PositionBiasCard } from '../components/PositionBiasCard'
 import { downloadCsv, sessionsToCsv } from '../features/testing/csvExport'
 import { formatDate, formatSeconds, truncate } from '../lib/format'
@@ -61,6 +62,15 @@ export function ResultsPage() {
   const candidateName = (id: string) => project.candidates.find((c) => c.id === id)?.name ?? '(已删除组合)'
 
   const filtered = useMemo(() => applyFilter(sessions, filter), [sessions, filter])
+  // 历史环境信息来自每条 Session 自身的快照, 绝不读取当前 project.testSettings
+  const experimentSummary = useMemo(() => summarizeExperimentSnapshots(filtered), [filtered])
+  const competitorCount = project.mockVideos.filter((m) => m.enabled).length
+  const distinctCandidates = useMemo(() => new Set(filtered.map((s) => s.candidateId)).size, [filtered])
+  const platformText = useMemo(() => {
+    const platforms = [...new Set(filtered.map((s) => s.platform))].map((p) => (p === 'youtube' ? 'YouTube' : 'Bilibili'))
+    const devices = [...new Set(filtered.map((s) => s.device))].map((d) => (d === 'desktop' ? '桌面' : '手机'))
+    return `${platforms.join('/') || '—'} · ${devices.join('/') || '—'}`
+  }, [filtered])
   const blindMetrics = useMemo(() => computeBlindMetrics(filtered), [filtered])
   const findMetrics = useMemo(() => computeFindMetrics(filtered), [filtered])
 
@@ -142,7 +152,6 @@ export function ResultsPage() {
                 const csv = sessionsToCsv({
                   sessions: filtered,
                   candidateName,
-                  competitionEnvironment: project.testSettings.competitionEnvironment,
                 })
                 downloadCsv(`feedlab-results-${new Date().toISOString().slice(0, 10)}.csv`, csv)
               }}
@@ -163,23 +172,22 @@ export function ResultsPage() {
           />
         ) : (
           <div className="space-y-4">
-            <ExperimentSummary
-              variant="compact"
-              platform={project.testSettings.platform}
-              device={project.testSettings.device}
-              environment={project.testSettings.competitionEnvironment}
-              environmentLabel={environmentLabel(
-                project.testSettings.competitionEnvironment,
-                project.testSettings.useRealPool,
-                project.mockVideos.filter((m) => m.enabled).length,
+            <ExperimentSummaryCompact
+              platformText={platformText}
+              environmentLabel={formatEnvironmentDisplay(
+                experimentSummary.competitionEnvironment,
+                competitorCount,
               )}
-              candidateCount={project.candidates.filter((c) => c.enabled).length}
-              rounds={project.testSettings.rounds}
-              blindDuration={project.testSettings.blindDuration}
-              lockEnvironment={project.testSettings.lockCompetitionEnvironment}
-              useFixedSeed={project.testSettings.useFixedSeed}
-              seed={project.testSettings.seed}
+              countText={`${distinctCandidates} 个方案 · ${filtered.length} 条记录`}
+              lockText={formatLockDisplay(experimentSummary.lockCompetitionEnvironment)}
             />
+            {experimentSummary.legacyCount > 0 ? (
+              <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-200/90">
+                {experimentSummary.snapshotCount > 0
+                  ? `包含 ${experimentSummary.legacyCount} 条未保存实验环境的旧记录，其竞争环境显示为 unknown。`
+                  : '这些记录创建于实验环境快照功能上线之前，未保存当时的竞争环境配置。'}
+              </div>
+            ) : null}
 
             <SectionCard
               title={`盲测 · 第一眼选择表现（${blindMetrics.length} 个组合）`}

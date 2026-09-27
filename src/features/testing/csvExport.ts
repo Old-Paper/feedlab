@@ -1,7 +1,8 @@
-import type { CompetitionEnvironment, TestSession } from '../../types'
+import type { TestSession } from '../../types'
 
 // 实验数据 CSV 导出 —— 方便在 Excel / Python 中继续分析。
 // 只导出结构化数据, 不包含任何图片二进制。
+// 竞争环境等配置逐行读取该 Session 自身的实验快照; 旧记录无快照时输出 unknown。
 
 const HEADER = [
   'sessionId',
@@ -17,6 +18,9 @@ const HEADER = [
   'wrongClicks',
   'seed',
   'competitionEnvironment',
+  'lockCompetitionEnvironment',
+  'useFixedSeed',
+  'environmentSeed',
 ] as const
 
 function escapeCsv(value: string | number | boolean | null | undefined): string {
@@ -28,10 +32,11 @@ function escapeCsv(value: string | number | boolean | null | undefined): string 
 export function sessionsToCsv(input: {
   sessions: TestSession[]
   candidateName: (id: string) => string
-  competitionEnvironment: CompetitionEnvironment
 }): string {
   const lines: string[] = [HEADER.join(',')]
   for (const s of input.sessions) {
+    // 每一行都读取该 Session 自身的实验快照; 旧记录无快照时输出 unknown, 绝不用当前项目设置补填
+    const snap = s.experimentSnapshot
     const row = [
       s.id,
       new Date(s.finishedAt).toISOString(),
@@ -45,12 +50,15 @@ export function sessionsToCsv(input: {
       s.reactionTime == null ? '' : String(s.reactionTime),
       String(s.wrongClicks),
       s.seed,
-      input.competitionEnvironment,
+      snap?.competitionEnvironment ?? 'unknown',
+      snap ? String(snap.lockCompetitionEnvironment) : 'unknown',
+      snap ? String(snap.useFixedSeed) : 'unknown',
+      snap?.environmentSeed ?? '',
     ]
     lines.push(row.map(escapeCsv).join(','))
   }
   // BOM: 让 Excel 正确识别 UTF-8 中文
-  return '\uFEFF' + lines.join('\r\n')
+  return '﻿' + lines.join('\r\n')
 }
 
 export function downloadCsv(filename: string, csv: string): void {

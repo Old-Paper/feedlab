@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BalancedScheduler, buildRoundPlans } from './balancedScheduler'
 import { RandomEngine } from './randomEngine'
+import { deriveEnvironmentSeed, deriveRoundSeed } from './experimentSeed'
 import type { TestSettings } from '../../types'
 
 function makeSettings(partial: Partial<TestSettings>): TestSettings {
@@ -151,7 +152,7 @@ describe('buildRoundPlans — 锁定竞争环境', () => {
       })
       const seeds = new Set(plans.map((p) => p.seed))
       expect(seeds.size).toBe(1)
-      expect(plans[0].seed).toContain('locked-env')
+      expect(plans[0].seed).toContain('#environment')
     }
   })
 
@@ -176,5 +177,67 @@ describe('buildRoundPlans — 锁定竞争环境', () => {
     })
     const seeds = new Set(plans.map((p) => p.seed))
     expect(seeds.size).toBe(9)
+  })
+})
+
+
+describe('buildRoundPlans — Run-level Seed 语义', () => {
+  const base = {
+    platform: 'youtube' as const,
+    enabledCandidateIds: ['c1', 'c2', 'c3'],
+    mockCount: 12,
+    rounds: 6,
+  }
+
+  it('useFixedSeed=true + lock=true: 重复创建两次, environmentSeed 与整个计划完全相同', () => {
+    const cfg = { ...base, settings: makeSettings({ useFixedSeed: true, seed: 'fixed-seed', lockCompetitionEnvironment: true }) }
+    const a = buildRoundPlans(cfg)
+    const b = buildRoundPlans(cfg)
+    expect(a).toEqual(b)
+    expect(a[0].environmentSeed).toBe(deriveEnvironmentSeed('fixed-seed'))
+  })
+
+  it('useFixedSeed=false + lock=true: 同一次运行内所有轮次共享环境种子, 不同运行之间不同', () => {
+    const cfg = { ...base, settings: makeSettings({ useFixedSeed: false, lockCompetitionEnvironment: true }) }
+    const runA = buildRoundPlans(cfg)
+    const runB = buildRoundPlans(cfg)
+    // Run 内一致
+    expect(new Set(runA.map((p) => p.seed)).size).toBe(1)
+    expect(new Set(runB.map((p) => p.seed)).size).toBe(1)
+    // Run 之间不同
+    expect(runA[0].environmentSeed).not.toBe(runB[0].environmentSeed)
+  })
+
+  it('显式传入相同 runSeed 时计划可复现; 不同 runSeed 时环境种子不同', () => {
+    const cfg = (runSeed: string) => ({
+      ...base,
+      settings: makeSettings({ useFixedSeed: false, lockCompetitionEnvironment: true }),
+      runSeed,
+    })
+    const a1 = buildRoundPlans(cfg('run-A'))
+    const a2 = buildRoundPlans(cfg('run-A'))
+    const b = buildRoundPlans(cfg('run-B'))
+    expect(a1).toEqual(a2)
+    expect(a1[0].environmentSeed).toBe(deriveEnvironmentSeed('run-A'))
+    expect(b[0].environmentSeed).toBe(deriveEnvironmentSeed('run-B'))
+    expect(a1[0].environmentSeed).not.toBe(b[0].environmentSeed)
+  })
+
+  it('useFixedSeed=false + lock=false: 各轮种子互不相同(独立随机环境)', () => {
+    const plans = buildRoundPlans({
+      ...base,
+      settings: makeSettings({ useFixedSeed: false, lockCompetitionEnvironment: false }),
+    })
+    expect(new Set(plans.map((p) => p.seed)).size).toBe(plans.length)
+    expect(plans.every((p) => p.environmentSeed === undefined)).toBe(true)
+  })
+
+  it('useFixedSeed=true + lock=false: 整个实验仍可复现(轮种子由 runSeed 派生)', () => {
+    const cfg = { ...base, settings: makeSettings({ useFixedSeed: true, seed: 'repro', lockCompetitionEnvironment: false }) }
+    const a = buildRoundPlans(cfg)
+    const b = buildRoundPlans(cfg)
+    expect(a).toEqual(b)
+    expect(a[0].seed).toBe(deriveRoundSeed('repro', 1))
+    expect(a[5].seed).toBe(deriveRoundSeed('repro', 6))
   })
 })

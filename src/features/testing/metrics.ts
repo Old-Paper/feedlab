@@ -1,4 +1,4 @@
-import type { Device, Platform, TestMode, TestSession } from '../../types'
+import type { CompetitionEnvironment, Device, Platform, TestMode, TestSession } from '../../types'
 import { average, median } from '../../lib/format'
 
 export interface SessionFilter {
@@ -116,4 +116,70 @@ export function computeFindMetrics(sessions: TestSession[]): FindTargetMetric[] 
     })
   }
   return rows.sort((a, b) => b.impressions - a.impressions)
+}
+
+
+// ---------------------------------------------------------------------------
+// 实验环境快照汇总: 历史结果的环境信息来自 Session 自身快照,
+// 绝不用当前 project.testSettings 冒充历史值。
+// ---------------------------------------------------------------------------
+
+export type HistoricalCompetitionEnvironment = CompetitionEnvironment | 'mixed' | 'unknown'
+
+export interface ExperimentSummaryAggregate {
+  competitionEnvironment: HistoricalCompetitionEnvironment
+  lockCompetitionEnvironment: boolean | 'mixed' | 'unknown'
+  useFixedSeed: boolean | 'mixed' | 'unknown'
+  mockCount: number | 'mixed' | 'unknown'
+  /** 有快照的记录数 */
+  snapshotCount: number
+  /** 无快照的旧记录数 */
+  legacyCount: number
+}
+
+export function summarizeExperimentSnapshots(sessions: TestSession[]): ExperimentSummaryAggregate {
+  const withSnapshot = sessions.filter((s) => s.experimentSnapshot)
+  if (withSnapshot.length === 0) {
+    // 旧记录: 无法可靠得知当时环境, 明确标记 unknown, 不用当前设置冒充
+    return {
+      competitionEnvironment: 'unknown',
+      lockCompetitionEnvironment: 'unknown',
+      useFixedSeed: 'unknown',
+      mockCount: 'unknown',
+      snapshotCount: 0,
+      legacyCount: sessions.length,
+    }
+  }
+  const uniq = <T,>(values: T[]): T[] => [...new Set(values)]
+  const pick = <T,>(values: T[]): T | 'mixed' => (values.length === 1 ? values[0] : 'mixed')
+  const envs = uniq(withSnapshot.map((s) => s.experimentSnapshot!.competitionEnvironment))
+  const locks = uniq(withSnapshot.map((s) => s.experimentSnapshot!.lockCompetitionEnvironment))
+  const fixed = uniq(withSnapshot.map((s) => s.experimentSnapshot!.useFixedSeed))
+  const counts = uniq(withSnapshot.map((s) => s.experimentSnapshot!.mockCount))
+  return {
+    competitionEnvironment: pick(envs),
+    lockCompetitionEnvironment: pick(locks),
+    useFixedSeed: pick(fixed),
+    mockCount: pick(counts),
+    snapshotCount: withSnapshot.length,
+    legacyCount: sessions.length - withSnapshot.length,
+  }
+}
+
+export function formatEnvironmentDisplay(
+  env: CompetitionEnvironment | 'mixed' | 'unknown',
+  competitorCount: number,
+  useRealPool?: boolean,
+): string {
+  if (env === 'mixed') return '混合（包含多个实验配置）'
+  if (env === 'unknown') return '未保存（旧记录）'
+  if (env === 'minecraft') return useRealPool ? 'Minecraft（真实池）' : 'Minecraft（内置库）'
+  if (env === 'competitors') return `我的竞品库（${competitorCount} 条启用）`
+  return useRealPool ? '全站（真实热门池）' : '全站（内置干扰库）'
+}
+
+export function formatLockDisplay(lock: boolean | 'mixed' | 'unknown'): string {
+  if (lock === 'mixed') return '混合（不同批次配置不同）'
+  if (lock === 'unknown') return '未记录（旧版本）'
+  return lock ? '已锁定竞争池 —— 各方案面对同一组干扰视频' : '每轮随机抽取干扰视频'
 }

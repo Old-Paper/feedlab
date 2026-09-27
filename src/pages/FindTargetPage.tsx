@@ -5,11 +5,14 @@ import { useProjectStore } from '../stores/projectStore'
 import { pickCandidatesForTest, useSimulationStore } from '../stores/simulationStore'
 import { useTestStore } from '../stores/testStore'
 import { buildRoundPlans } from '../features/testing/balancedScheduler'
+import { createExperimentRunSeed, createExperimentSnapshot } from '../features/testing/experimentSeed'
+import type { ExperimentSnapshot } from '../types'
 import { candidateById, generateFeed, type FeedOptions } from '../features/testing/feedGenerator'
 import { useCoverPool } from '../hooks/useCoverPool'
 import { DeviceViewport } from '../components/DeviceViewport'
 import { FeedRenderer } from '../platforms'
-import { ExperimentSummary, environmentLabel } from '../components/ExperimentSummary'
+import { ExperimentSummary } from '../components/ExperimentSummary'
+import { formatEnvironmentDisplay, formatLockDisplay } from '../features/testing/metrics'
 import { Button, EmptyState, Stat } from '../components/ui'
 import { toast } from '../stores/toastStore'
 import { formatSeconds } from '../lib/format'
@@ -23,6 +26,7 @@ export function FindTargetPage() {
   const [elapsed, setElapsed] = useState(0)
   const startRef = useRef(0)
   const wrongRef = useRef(0)
+  const runInfoRef = useRef<{ snapshot: ExperimentSnapshot } | null>(null)
 
   const enabledCount = project.candidates.filter((c) => c.enabled).length
 
@@ -77,6 +81,7 @@ export function FindTargetPage() {
     const settingsLike = {
       ...ts,
       platform: sim.platform,
+      competitionEnvironment: sim.competitionEnvironment,
       device: sim.device,
       theme: sim.theme,
       viewportPresetId: sim.viewportPresetId,
@@ -90,13 +95,16 @@ export function FindTargetPage() {
       useFixedSeed: sim.useFixedSeed,
       seed: sim.seed,
     } satisfies TestSettings
+    const run = createExperimentRunSeed(settingsLike)
     const plans = buildRoundPlans({
       settings: settingsLike,
       platform: sim.platform,
       enabledCandidateIds: candidates.map((c) => c.id),
       mockCount: sim.mockCount,
       rounds: ts.rounds,
+      runSeed: run.runSeed,
     })
+    runInfoRef.current = { snapshot: createExperimentSnapshot(settingsLike, run) }
     wrongRef.current = 0
     test.startTest('find', plans)
   }
@@ -129,6 +137,7 @@ export function FindTargetPage() {
       reactionTime: Math.round(reactionTime),
       wrongClicks: wrongRef.current,
       exposureDuration: 0,
+      experimentSnapshot: runInfoRef.current?.snapshot,
     }
     void test.submitRound(session, {
       round: plan.round,
@@ -166,11 +175,10 @@ export function FindTargetPage() {
               <ExperimentSummary
                 platform={sim.platform}
                 device={sim.device}
-                environment={sim.competitionEnvironment}
-                environmentLabel={environmentLabel(
+                environmentLabel={formatEnvironmentDisplay(
                   sim.competitionEnvironment,
-                  sim.useRealPool,
                   project.mockVideos.filter((m) => m.enabled).length,
+                  sim.useRealPool,
                 )}
                 candidateCount={pickCandidatesForTest(project, {
                   candidateScope: project.testSettings.candidateScope,
@@ -178,7 +186,7 @@ export function FindTargetPage() {
                 }).length}
                 rounds={project.testSettings.rounds}
                 blindDuration={project.testSettings.blindDuration}
-                lockEnvironment={project.testSettings.lockCompetitionEnvironment}
+                lockText={formatLockDisplay(project.testSettings.lockCompetitionEnvironment)}
                 useFixedSeed={sim.useFixedSeed}
                 seed={sim.seed}
               />

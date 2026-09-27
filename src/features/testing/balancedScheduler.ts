@@ -1,4 +1,5 @@
 import { RandomEngine, randomSeed } from './randomEngine'
+import { createExperimentRunSeed, deriveEnvironmentSeed, deriveRoundSeed } from './experimentSeed'
 import type { Platform, PositionMode, TestSettings } from '../../types'
 
 /**
@@ -61,7 +62,10 @@ export interface RoundPlan {
   candidateId: string | null
   /** 0-based slot inside the feed. */
   position: number
+  /** 该轮信息流种子(锁定竞争环境时 = environmentSeed) */
   seed: string
+  /** 锁定竞争环境时, 本次运行共用的环境种子 */
+  environmentSeed?: string
 }
 
 export interface PlanConfig {
@@ -70,6 +74,12 @@ export interface PlanConfig {
   enabledCandidateIds: string[]
   mockCount: number
   rounds: number
+  /**
+   * 一次完整测试运行的种子。缺省时按 settings 推导:
+   * useFixedSeed=true → 使用 settings.seed(可复现); 否则随机生成。
+   * 调用方(Blind/Find 页面)应通过 createExperimentRunSeed 显式生成并写入快照。
+   */
+  runSeed?: string
 }
 
 /**
@@ -78,7 +88,7 @@ export interface PlanConfig {
  * position, per-round feed seed) is deterministic.
  */
 export function buildRoundPlans(cfg: PlanConfig): RoundPlan[] {
-  const baseSeed = cfg.settings.seed || 'feedlab'
+  const baseSeed = cfg.runSeed ?? createExperimentRunSeed(cfg.settings).runSeed
   const rng = new RandomEngine(`${baseSeed}#scheduler#${cfg.platform}`)
   const scopeSingle = cfg.settings.candidateScope === 'single' && cfg.settings.singleCandidateId
   const candidateIds =
@@ -90,18 +100,17 @@ export function buildRoundPlans(cfg: PlanConfig): RoundPlan[] {
   const plans: RoundPlan[] = []
   // 锁定竞争环境: 所有轮次共用同一环境种子 → 同一批干扰视频 + 相同顺序,
   // 候选与位置仍按 Balanced Scheduler 轮换, 保证不同方案面对同一组竞争视频。
+  // 语义: 锁定只在"本次运行内部"生效; runSeed 随机时, 新一次运行会得到新环境。
   const lockEnvironment = cfg.settings.lockCompetitionEnvironment === true
+  const environmentSeed = lockEnvironment ? deriveEnvironmentSeed(baseSeed) : undefined
   for (let i = 0; i < cfg.rounds; i++) {
     const draw = scheduler.next()
     plans.push({
       round: i + 1,
       candidateId: draw.candidateId,
       position: draw.position,
-      seed: lockEnvironment
-        ? `${baseSeed}#locked-env`
-        : cfg.settings.useFixedSeed
-          ? `${baseSeed}#round${i + 1}`
-          : randomSeed(),
+      seed: environmentSeed ?? (cfg.settings.useFixedSeed ? deriveRoundSeed(baseSeed, i + 1) : randomSeed()),
+      ...(environmentSeed ? { environmentSeed } : {}),
     })
   }
   return plans

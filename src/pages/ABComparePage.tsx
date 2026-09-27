@@ -7,7 +7,8 @@ import { useCoverPool } from '../hooks/useCoverPool'
 import { DeviceViewport } from '../components/DeviceViewport'
 import { FeedRenderer } from '../platforms'
 import { TestSetupBar } from '../components/TestSetupBar'
-import { ExperimentSummary, environmentLabel } from '../components/ExperimentSummary'
+import { ExperimentSummaryCompact } from '../components/ExperimentSummary'
+import { formatEnvironmentDisplay, formatLockDisplay } from '../features/testing/metrics'
 import { Button, Segmented } from '../components/ui'
 import type { ABLayout } from '../stores/simulationStore'
 import { clsx } from 'clsx'
@@ -171,21 +172,15 @@ export function ABComparePage() {
       </div>
 
       <div className="border-b border-[#1e2027] bg-[#0e1015] px-4 py-2">
-        <ExperimentSummary
-          variant="compact"
-          platform={sim.platform}
-          device={sim.device}
-          environment={sim.competitionEnvironment}
-          environmentLabel={environmentLabel(
+        <ExperimentSummaryCompact
+          platformText={`${sim.platform === 'youtube' ? 'YouTube' : 'Bilibili'} · ${sim.device === 'desktop' ? '桌面' : '手机'}`}
+          environmentLabel={formatEnvironmentDisplay(
             sim.competitionEnvironment,
-            sim.useRealPool,
             project.mockVideos.filter((m) => m.enabled).length,
+            sim.useRealPool,
           )}
-          candidateCount={2}
-          rounds={1}
-          blindDuration={project.testSettings.blindDuration}
-          lockEnvironment={project.testSettings.lockCompetitionEnvironment}
-          useFixedSeed={sim.useFixedSeed}
+          countText="A/B 两方案 · 同 Seed 对照"
+          lockText={formatLockDisplay(project.testSettings.lockCompetitionEnvironment)}
         />
       </div>
 
