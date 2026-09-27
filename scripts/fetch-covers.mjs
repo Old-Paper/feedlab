@@ -124,8 +124,45 @@ function collectVideoRenderers(node, out, seen) {
     for (const item of node) collectVideoRenderers(item, out, seen)
     return
   }
-  if (node.videoRenderer) out.push(node.videoRenderer)
+  // 旧结构(搜索页)与新结构(trending 2025+)并存
+  if (node.videoRenderer) out.push({ kind: 'video', r: node.videoRenderer })
+  if (node.lockupViewModel && node.lockupViewModel.contentType === 'LOCKUP_CONTENT_TYPE_VIDEO') {
+    out.push({ kind: 'lockup', r: node.lockupViewModel })
+  }
   for (const k of Object.keys(node)) collectVideoRenderers(node[k], out, seen)
+}
+
+/** 解析新版 lockupViewModel(trending 页) */
+function mapYtLockup(vm) {
+  const meta = vm.metadata?.lockupMetadataViewModel
+  const title = meta?.title?.content ?? ''
+  let channel = ''
+  let views = null
+  let ago = null
+  const rows = meta?.metadata?.contentMetadataViewModel?.metadataRows ?? []
+  for (const row of rows) {
+    for (const part of row.metadataParts ?? []) {
+      const t = part?.text?.content ?? ''
+      if (!t) continue
+      if (/view/i.test(t)) views = parseViewsEn(t)
+      else if (/ago|Streamed|Premiere/i.test(t)) ago = parseAgoEn(t)
+      else if (!channel) channel = t
+    }
+  }
+  const badges = (vm.contentImage?.thumbnailViewModel?.overlays ?? [])
+    .flatMap((o) => o?.thumbnailOverlayBadgeViewModel?.thumbnailBadges ?? [])
+    .map((b) => b?.thumbnailBadgeViewModel?.text)
+    .filter(Boolean)
+  const durText = badges.find((t) => /^\d+(:\d+)+$/.test(t))
+  return {
+    id: `yt-${vm.contentId}`,
+    title,
+    channel,
+    views: views ?? 0,
+    durationSec: parseDurationEn(durText ?? null) ?? 0,
+    publishedHoursAgo: ago ?? 48,
+    pic: `https://i.ytimg.com/vi/${vm.contentId}/hq720.jpg`,
+  }
 }
 
 function parseViewsEn(text) {
@@ -202,19 +239,20 @@ async function verifyPic(entry) {
 async function fetchYouTube() {
   const hot = []
   const low = []
+  const toEntry = (item) => (item.kind === 'lockup' ? mapYtLockup(item.r) : mapYt(item.r))
   try {
     const html = await timedFetch('https://www.youtube.com/feed/trending', YT_HEADERS, 'text')
     const data = extractYtInitialData(html)
     if (!data) throw new Error('ytInitialData not found (consent page?)')
-    const renderers = []
-    collectVideoRenderers(data, renderers, new Set())
+    const items = []
+    collectVideoRenderers(data, items, new Set())
     const seen = new Set()
-    for (const r of renderers) {
+    for (const item of items) {
       if (hot.length >= HOT_N) break
-      if (!r.videoId || seen.has(r.videoId)) continue
-      const mapped = mapYt(r)
+      const mapped = toEntry(item)
       if (!mapped.title || !mapped.channel || mapped.durationSec <= 0) continue
-      seen.add(r.videoId)
+      if (seen.has(mapped.id)) continue
+      seen.add(mapped.id)
       hot.push(mapped)
     }
   } catch (e) {
@@ -233,15 +271,15 @@ async function fetchYouTube() {
       )
       const data = extractYtInitialData(html)
       if (!data) continue
-      const renderers = []
-      collectVideoRenderers(data, renderers, new Set())
-      for (const r of renderers) {
+      const items = []
+      collectVideoRenderers(data, items, new Set())
+      for (const item of items) {
         if (low.length >= LOW_N) break
-        if (!r.videoId || seen.has(r.videoId)) continue
-        const mapped = mapYt(r)
+        const mapped = toEntry(item)
         if (!mapped.title || !mapped.channel || mapped.durationSec <= 0) continue
         if (mapped.views > 50000) continue
-        seen.add(r.videoId)
+        if (seen.has(mapped.id)) continue
+        seen.add(mapped.id)
         low.push(mapped)
       }
     } catch (e) {
