@@ -20,6 +20,7 @@ export function defaultTestSettings(): TestSettings {
     useFixedSeed: false,
     seed: randomSeed(),
     useRealPool: false,
+    distractorCategory: 'normal',
     blindDuration: 5,
     rounds: 10,
     candidateScope: 'all',

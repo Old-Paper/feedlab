@@ -30,13 +30,14 @@ export function FindTargetPage() {
     return sim.platform === 'youtube' ? ch.youtube.channelName || ch.name : ch.bilibili.uploaderName || ch.name
   }, [project.channel, sim.platform])
 
-  const pool = useCoverPool(sim.platform, sim.useRealPool)
+  const pool = useCoverPool(sim.platform, sim.useRealPool, sim.distractorCategory)
   const options: FeedOptions = useMemo(
     () => ({
       platform: sim.platform,
       mockCount: sim.mockCount,
       randomizeFeedOrder: sim.randomizeFeedOrder,
       randomizeMetadata: sim.randomizeMetadata,
+      category: sim.distractorCategory,
       poolVideos: pool ?? undefined,
     }),
     [sim.platform, sim.mockCount, sim.randomizeFeedOrder, sim.randomizeMetadata, pool],

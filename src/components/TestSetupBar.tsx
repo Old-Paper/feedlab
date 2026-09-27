@@ -1,6 +1,6 @@
 import { Dices, ExternalLink, Eye, Moon, Shuffle, Sun } from 'lucide-react'
 import { useState } from 'react'
-import { DESKTOP_VIEWPORTS, MOBILE_VIEWPORTS, type Device, type Platform, type Project, type ThemeMode } from '../types'
+import { DESKTOP_VIEWPORTS, MOBILE_VIEWPORTS, type DistractorCategory, type Device, type Platform, type Project, type ThemeMode } from '../types'
 import { Button, Segmented, Select, NumberInput, Checkbox, TextInput, IconButton } from './ui'
 import type { SimulationState } from '../stores/simulationStore'
 
@@ -16,6 +16,7 @@ type SimSlice = Pick<
   | 'useFixedSeed'
   | 'seed'
   | 'useRealPool'
+  | 'distractorCategory'
   | 'inspectEnabled'
   | 'candidateId'
 >
@@ -182,9 +183,17 @@ export function TestSetupBar({
           ))}
         </Select>
       ) : null}
+      <Segmented<DistractorCategory>
+        value={sim.distractorCategory}
+        onChange={(v) => patch({ distractorCategory: v })}
+        options={[
+          { value: 'normal', label: '普通分区' },
+          { value: 'minecraft', label: '我的世界' },
+        ]}
+      />
       <Checkbox
         label={
-          <span title="开启后干扰视频使用每日自动抓取的真实视频(按当前平台: 全站最火 + 不太火混合),当天固定、次日更新">
+          <span title="开启后干扰视频使用每日自动抓取的真实视频(按当前平台与分区),当天固定、次日更新">
             真实封面池
           </span>
         }

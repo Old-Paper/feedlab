@@ -31,6 +31,7 @@ function MobileCard({ video, p, t, clickable, onSelect }: { video: FeedVideo; p:
           {formatDuration(video.durationSec)}
         </span>
       </div>
+      {/* m.youtube.com 实测结构: 头像与标题同行, 频道行与 播放量·时间行 均与标题左缘对齐 */}
       <div className="flex gap-3" style={{ padding: `10px ${p.paddingX}px 0` }}>
         <FeedAvatar name={video.avatarName} assetId={video.avatarAssetId} size={p.avatarSize} />
         <div className="min-w-0 flex-1">
@@ -41,12 +42,15 @@ function MobileCard({ video, p, t, clickable, onSelect }: { video: FeedVideo; p:
           >
             {video.title}
           </div>
-          <div className="mt-0.5 flex-1 truncate" style={{ fontSize: p.metaFontSize, color: t.textSecondary }}>
-            {video.channel} · {formatCount(video.views)}次观看 · {formatPublishTime(video.publishedHoursAgo)}
+          <div className="truncate" style={{ marginTop: 2, fontSize: p.metaFontSize, lineHeight: `${p.metaLineHeight}px`, color: t.textSecondary }}>
+            {video.channel}
+          </div>
+          <div style={{ fontSize: p.metaFontSize, lineHeight: `${p.metaLineHeight}px`, color: t.textSecondary }}>
+            {formatCount(video.views)}次观看 · {formatPublishTime(video.publishedHoursAgo)}
           </div>
         </div>
         <div className="shrink-0">
-          <MoreVertical size={17} color={t.textSecondary} />
+          <MoreVertical size={18} color={t.textSecondary} />
         </div>
       </div>
     </div>

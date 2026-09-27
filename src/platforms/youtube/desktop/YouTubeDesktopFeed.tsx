@@ -222,7 +222,7 @@ export function YouTubeDesktopFeed({ feed, theme, frameWidth, onSelectVideo }: F
           className="grid"
           style={{
             padding: `8px ${P.contentPaddingX}px 32px`,
-            gridTemplateColumns: `repeat(auto-fill, minmax(${P.minCardWidth}px, 1fr))`,
+            gridTemplateColumns: `repeat(${P.columns}, minmax(0, 1fr))`,
             columnGap: P.gridGapX,
             rowGap: P.gridGapY,
           }}

@@ -27,13 +27,14 @@ export function BlindTestPage() {
 
   const enabledCount = project.candidates.filter((c) => c.enabled).length
 
-  const pool = useCoverPool(sim.platform, sim.useRealPool)
+  const pool = useCoverPool(sim.platform, sim.useRealPool, sim.distractorCategory)
   const options: FeedOptions = useMemo(
     () => ({
       platform: sim.platform,
       mockCount: sim.mockCount,
       randomizeFeedOrder: sim.randomizeFeedOrder,
       randomizeMetadata: sim.randomizeMetadata,
+      category: sim.distractorCategory,
       poolVideos: pool ?? undefined,
     }),
     [sim.platform, sim.mockCount, sim.randomizeFeedOrder, sim.randomizeMetadata, pool],

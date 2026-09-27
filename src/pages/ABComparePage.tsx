@@ -25,13 +25,14 @@ export function ABComparePage() {
   const candidateA = candidateById(project, sim.abCandidateA)
   const candidateB = candidateById(project, sim.abCandidateB)
 
-  const pool = useCoverPool(sim.platform, sim.useRealPool)
+  const pool = useCoverPool(sim.platform, sim.useRealPool, sim.distractorCategory)
   const options = useMemo(
     () => ({
       platform: sim.platform,
       mockCount: sim.mockCount,
       randomizeFeedOrder: sim.randomizeFeedOrder,
       randomizeMetadata: false, // A/B must differ only by cover+title
+      category: sim.distractorCategory,
       poolVideos: pool ?? undefined,
     }),
     [sim.platform, sim.mockCount, sim.randomizeFeedOrder, pool],

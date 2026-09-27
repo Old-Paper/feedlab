@@ -11,6 +11,8 @@ export type PlatformEnv = 'youtube-desktop' | 'youtube-mobile' | 'bilibili-deskt
 export type TestMode = 'blind' | 'find'
 export type PositionMode = 'random' | 'fixed'
 export type MetadataMode = 'fixed' | 'random'
+/** 干扰视频分区: 普通全站生态 / 我的世界(MC 区封面竞争) */
+export type DistractorCategory = 'normal' | 'minecraft'
 /** Seconds a feed stays visible during a blind test. 0 = unlimited. */
 export type BlindDuration = 3 | 5 | 10 | 0
 
@@ -134,6 +136,7 @@ export interface TestSettings {
   seed: string
   /** 干扰视频使用每日抓取的真实封面池(按平台),而不是内置程序生成视频。 */
   useRealPool: boolean
+  distractorCategory: DistractorCategory
   blindDuration: BlindDuration
   rounds: number
   candidateScope: 'all' | 'single'

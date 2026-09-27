@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type {
   BlindDuration,
   Candidate,
+  DistractorCategory,
   Platform,
   PositionMode,
   Project,
@@ -28,6 +29,7 @@ export interface SimulationState {
   useFixedSeed: boolean
   seed: string
   useRealPool: boolean
+  distractorCategory: DistractorCategory
   inspectEnabled: boolean
   candidateId: string | null
   ytMobileStyle: 'standard' | 'experimental'
@@ -61,6 +63,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   useFixedSeed: false,
   seed: randomSeed(),
   useRealPool: false,
+  distractorCategory: 'normal',
   inspectEnabled: false,
   candidateId: null,
   ytMobileStyle: 'standard',
@@ -95,6 +98,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         useFixedSeed: s.useFixedSeed,
         seed: s.seed || randomSeed(),
         useRealPool: s.useRealPool,
+        distractorCategory: s.distractorCategory,
         blindDuration: s.blindDuration,
         rounds: s.rounds,
         candidateScope: s.candidateScope,

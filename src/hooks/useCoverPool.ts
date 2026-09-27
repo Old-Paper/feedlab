@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { MockVideo, Platform } from '../types'
+import type { DistractorCategory, MockVideo, Platform } from '../types'
 
 // 每日真实封面池 —— 由 GitHub Actions 每天定时运行 scripts/fetch-covers.mjs 生成一次,
 // 静态托管在 /data/coverPool.json;当天所有访客使用同一份数据,次日由定时任务覆盖。
@@ -18,8 +18,8 @@ export interface PoolEntry {
 
 interface CoverPoolFile {
   generatedAt: string
-  bilibili: { hot: PoolEntry[]; low: PoolEntry[] }
-  youtube: { hot: PoolEntry[]; low: PoolEntry[] }
+  bilibili: { hot: PoolEntry[]; low: PoolEntry[]; minecraft?: PoolEntry[] }
+  youtube: { hot: PoolEntry[]; low: PoolEntry[]; minecraft?: PoolEntry[] }
 }
 
 let cachedFile: CoverPoolFile | null | undefined
@@ -45,9 +45,13 @@ async function loadCoverPoolFile(): Promise<CoverPoolFile | null> {
   return await inflight
 }
 
-export function poolToMockVideos(platform: Platform, file: CoverPoolFile): MockVideo[] {
+export function poolToMockVideos(platform: Platform, file: CoverPoolFile, category: DistractorCategory = 'normal'): MockVideo[] {
   const bucket = platform === 'youtube' ? file.youtube : file.bilibili
-  const entries = [...(bucket?.hot ?? []), ...(bucket?.low ?? [])]
+  const list =
+    category === 'minecraft'
+      ? [...(bucket?.minecraft ?? [])]
+      : [...(bucket?.hot ?? []), ...(bucket?.low ?? [])]
+  const entries = list
   return entries.map((e) => ({
     id: `pool-${platform}-${e.id}`,
     title: e.title,
@@ -66,7 +70,7 @@ export function poolToMockVideos(platform: Platform, file: CoverPoolFile): MockV
  * 加载当前平台的真实封面池。enabled=false 或文件缺失/对应平台为空时返回 null,
  * 生成器会自动回退到内置干扰视频库。
  */
-export function useCoverPool(platform: Platform, enabled: boolean): MockVideo[] | null {
+export function useCoverPool(platform: Platform, enabled: boolean, category: DistractorCategory = 'normal'): MockVideo[] | null {
   const [pool, setPool] = useState<MockVideo[] | null>(null)
 
   useEffect(() => {
@@ -77,12 +81,12 @@ export function useCoverPool(platform: Platform, enabled: boolean): MockVideo[] 
     let alive = true
     void loadCoverPoolFile().then((file) => {
       if (!alive) return
-      setPool(file ? poolToMockVideos(platform, file) : null)
+      setPool(file ? poolToMockVideos(platform, file, category) : null)
     })
     return () => {
       alive = false
     }
-  }, [platform, enabled])
+  }, [platform, enabled, category])
 
   return pool
 }

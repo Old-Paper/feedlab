@@ -3,7 +3,7 @@ import { useProjectStore } from '../../stores/projectStore'
 import { Button, Checkbox, Field, NumberInput, SectionCard, Segmented, Select, TextInput, IconButton } from '../../components/ui'
 import { MockCountPicker, ViewportPicker } from '../../components/TestSetupBar'
 import { randomSeed } from '../../features/testing/randomEngine'
-import type { BlindDuration, Device, Platform, PositionMode, Project, ThemeMode } from '../../types'
+import type { BlindDuration, Device, DistractorCategory, Platform, PositionMode, Project, ThemeMode } from '../../types'
 
 const ROUND_OPTIONS = [1, 5, 10, 20, 50]
 
@@ -83,13 +83,24 @@ export function TestSettingsTab() {
             <Checkbox label="随机化元数据(播放量 / 弹幕 / 时间抖动)" checked={s.randomizeMetadata} onChange={(v) => set({ randomizeMetadata: v })} />
             <Checkbox
               label={
-                <span title="开启后干扰视频使用每日自动抓取的真实视频(按当前平台: 全站最火 + 不太火混合),当天固定、次日更新;油管数据由部署服务器每日抓取">
+                <span title="开启后干扰视频使用每日自动抓取的真实视频(按当前平台与分区),当天固定、次日更新;油管数据由部署服务器每日抓取">
                   干扰视频使用真实封面池(每日更新)
                 </span>
               }
               checked={s.useRealPool}
               onChange={(v) => set({ useRealPool: v })}
             />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-500">分区</span>
+              <Segmented<DistractorCategory>
+                value={s.distractorCategory}
+                onChange={(v) => set({ distractorCategory: v })}
+                options={[
+                  { value: 'normal', label: '普通' },
+                  { value: 'minecraft', label: '我的世界' },
+                ]}
+              />
+            </div>
           </div>
         </div>
       </SectionCard>
