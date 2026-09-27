@@ -2,18 +2,36 @@ import { useEffect, useMemo, useState } from 'react'
 import { BarChart3, Trash2 } from 'lucide-react'
 import { useProjectStore } from '../stores/projectStore'
 import { sessionRepository } from '../db/repositories/sessionRepository'
-import { applyFilter, computeCandidateMetrics, envLabel, NO_FILTER, type SessionFilter } from '../features/testing/metrics'
+import { applyFilter, computeBlindMetrics, computeFindMetrics, envLabel, NO_FILTER, type BlindTestMetric, type FindTargetMetric, type SessionFilter } from '../features/testing/metrics'
+import { formatCI, formatPercent, intervalsOverlap, sampleSizeHint, wilsonInterval } from '../features/testing/statistics'
 import { Button, Badge, ConfirmModal, EmptyState, Segmented, SectionCard, Checkbox } from '../components/ui'
 import { formatDate, formatSeconds, truncate } from '../lib/format'
 import type { Device, Platform, TestMode, TestSession } from '../types'
 
-const ENV_OPTIONS: Array<{ value: SessionFilter['platform'] & ('all' | Platform); device: SessionFilter['device']; label: string }> = [
+const ENV_OPTIONS: Array<{ value: Platform | 'all'; device: Device | 'all'; label: string }> = [
   { value: 'all', device: 'all', label: '全部环境' },
   { value: 'youtube', device: 'desktop', label: 'YT 桌面' },
   { value: 'youtube', device: 'mobile', label: 'YT 手机' },
   { value: 'bilibili', device: 'desktop', label: 'B站 桌面' },
   { value: 'bilibili', device: 'mobile', label: 'B站 手机' },
 ]
+
+/** 样本量 n 的温和提示(仅 UI 风险提示, 不构成统计学判定)。 */
+function SampleHint({ n }: { n: number }) {
+  const hint = sampleSizeHint(n)
+  const tone =
+    hint.tone === 'severe'
+      ? 'text-amber-400'
+      : hint.tone === 'low'
+        ? 'text-amber-300/80'
+        : 'text-emerald-400/80'
+  return (
+    <span className={`text-[11px] ${tone}`}>
+      n={n}
+      {n > 0 ? ` · ${hint.text}` : ' · 暂无数据'}
+    </span>
+  )
+}
 
 export function ResultsPage() {
   const project = useProjectStore((s) => s.project)!
@@ -40,14 +58,37 @@ export function ResultsPage() {
   const candidateName = (id: string) => project.candidates.find((c) => c.id === id)?.name ?? '(已删除组合)'
 
   const filtered = useMemo(() => applyFilter(sessions, filter), [sessions, filter])
-  const metrics = useMemo(() => computeCandidateMetrics(filtered, candidateName), [filtered, project.candidates])
-  const blindRows = metrics.filter((m) => filtered.some((s) => s.candidateId === m.candidateId && s.mode === 'blind'))
-  const findRows = metrics.filter((m) => filtered.some((s) => s.candidateId === m.candidateId && s.mode === 'find'))
+  const blindMetrics = useMemo(() => computeBlindMetrics(filtered), [filtered])
+  const findMetrics = useMemo(() => computeFindMetrics(filtered), [filtered])
 
   const envActive = (o: (typeof ENV_OPTIONS)[number]) => filter.platform === o.value && filter.device === o.device
 
-  const compareRows = metrics.filter((m) => compareIds.has(m.candidateId))
-  const maxCtr = Math.max(0.01, ...compareRows.map((r) => r.targetClickRate))
+  type CompareRow =
+    | ({ kind: 'blind'; name: string } & BlindTestMetric)
+    | ({ kind: 'find'; name: string } & FindTargetMetric)
+  const compareRows = useMemo<CompareRow[]>(() => {
+    const blindRows = blindMetrics
+      .filter((m) => compareIds.has(m.candidateId))
+      .map((m) => ({ ...m, name: candidateName(m.candidateId), kind: 'blind' as const }))
+    const findRows = findMetrics
+      .filter((m) => compareIds.has(m.candidateId))
+      .map((m) => ({ ...m, name: candidateName(m.candidateId), kind: 'find' as const }))
+    return [...blindRows, ...findRows]
+  }, [blindMetrics, findMetrics, compareIds, candidateName])
+  const maxFirstChoice = Math.max(0.01, ...compareRows.filter((r) => r.kind === 'blind').map((r) => r.firstChoiceRate))
+  const maxFind = Math.max(0.01, ...compareRows.filter((r) => r.kind === 'find').map((r) => r.findRate))
+
+  // 两个方案的第一眼选择率置信区间高度重叠时, 给出"证据不足"的温和提示
+  const firstChoiceCompareNote = useMemo(() => {
+    const blindRows = compareRows.filter((r): r is Extract<CompareRow, { kind: 'blind' }> => r.kind === 'blind' && r.impressions > 0)
+    if (blindRows.length !== 2) return null
+    const [a, b] = blindRows
+    const ciA = wilsonInterval(a.firstChoices, a.impressions)
+    const ciB = wilsonInterval(b.firstChoices, b.impressions)
+    return intervalsOverlap(ciA, ciB)
+      ? '目前两方案第一眼选择率的置信区间重叠，证据不足以认为存在稳定差异'
+      : '当前观察值存在差异；样本量有限时仍可能出现波动，建议继续积累测试轮数'
+  }, [compareRows])
 
   const pct = (v: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`)
   const secs = (v: number | null) => (v == null ? '—' : formatSeconds(v))
@@ -64,7 +105,9 @@ export function ResultsPage() {
             <h1 className="flex items-center gap-2 text-lg font-bold text-zinc-100">
               <BarChart3 size={18} /> 测试结果
             </h1>
-            <p className="mt-0.5 text-xs text-zinc-500">共 {sessions.length} 条记录 · 不同平台的指标必须分开看,不存在总评分</p>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              共 {sessions.length} 条记录 · 盲测与找目标指标分开统计 · 不同平台/设备请分开查看
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Segmented<TestMode | 'all'>
@@ -98,107 +141,211 @@ export function ResultsPage() {
           <EmptyState
             icon={<BarChart3 size={32} />}
             title="还没有测试数据"
-            hint="去「盲测」或「找目标」页面完成至少一轮测试,这里会出现每个 Candidate 的表现指标。"
+            hint="去「盲测」或「找目标」页面完成至少一轮测试，这里会出现每个 Candidate 的表现指标。"
           />
         ) : (
           <div className="space-y-4">
-            <SectionCard title={`盲测 · 第一选择表现(${blindRows.length} 个组合)`}>
-              {blindRows.length === 0 ? (
+            <SectionCard
+              title={`盲测 · 第一眼选择表现（${blindMetrics.length} 个组合）`}
+              hint="第一眼选择率 = 盲测中被选为第一选择的比例，不代表平台后台真实 CTR"
+            >
+              {blindMetrics.length === 0 ? (
                 <div className="py-4 text-center text-xs text-zinc-600">当前筛选下没有盲测数据</div>
               ) : (
-                <MetricTable
-                  head={['Candidate', '曝光', '首选次数', '首选率 CTR', '平均反应', '中位反应']}
-                  rows={blindRows.map((m) => ({
-                    id: m.candidateId,
-                    name: m.name,
-                    cells: [String(m.impressions), String(m.targetClicks), pct(m.targetClickRate), secs(m.avgReactionTime), secs(m.medianReactionTime)],
-                  }))}
-                />
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[720px] text-left text-[13px]">
+                    <thead>
+                      <tr className="text-xs text-zinc-500">
+                        <th className="pb-2 pr-4 font-medium">Candidate</th>
+                        <th className="pb-2 pr-4 font-medium">第一眼选择</th>
+                        <th className="pb-2 pr-4 font-medium">第一眼选择率</th>
+                        <th className="pb-2 pr-4 font-medium">95% 置信区间</th>
+                        <th className="pb-2 pr-4 font-medium">平均反应</th>
+                        <th className="pb-2 pr-4 font-medium">中位反应</th>
+                        <th className="pb-2 font-medium">样本量</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {blindMetrics.map((m) => {
+                        const ci = wilsonInterval(m.firstChoices, m.impressions)
+                        return (
+                          <tr key={m.candidateId} className="border-t border-[#1c1e25] align-top">
+                            <td className="max-w-64 truncate py-2.5 pr-4 font-medium text-zinc-200">{candidateName(m.candidateId)}</td>
+                            <td className="py-2.5 pr-4 tabular-nums text-zinc-300">
+                              {m.firstChoices} / {m.impressions}
+                            </td>
+                            <td className="py-2.5 pr-4 tabular-nums text-zinc-100">{formatPercent(m.firstChoiceRate)}</td>
+                            <td className="py-2.5 pr-4 tabular-nums text-zinc-400">{formatCI(ci)}</td>
+                            <td className="py-2.5 pr-4 tabular-nums text-zinc-300">{secs(m.averageReactionTime)}</td>
+                            <td className="py-2.5 pr-4 tabular-nums text-zinc-300">{secs(m.medianReactionTime)}</td>
+                            <td className="py-2.5">
+                              <SampleHint n={m.impressions} />
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                  <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
+                    第一眼选择率：Blind Test 中该方案被选为第一选择的比例，不代表 YouTube / Bilibili 后台真实 CTR。
+                    置信区间越窄说明估计越稳定；样本量小时区间会明显变宽。
+                  </p>
+                </div>
               )}
             </SectionCard>
 
-            <SectionCard title={`找目标 · 视觉显著性(${findRows.length} 个组合)`}>
-              {findRows.length === 0 ? (
+            <SectionCard title={`找目标 · 视觉显著性（${findMetrics.length} 个组合）`} hint="寻找用时仅统计成功找到的轮次">
+              {findMetrics.length === 0 ? (
                 <div className="py-4 text-center text-xs text-zinc-600">当前筛选下没有找目标数据</div>
               ) : (
-                <MetricTable
-                  head={['Candidate', '尝试', '找到', '找到率', '平均用时', '错点率']}
-                  rows={findRows.map((m) => ({
-                    id: m.candidateId,
-                    name: m.name,
-                    cells: [String(m.impressions), String(m.finds), pct(m.findRate), secs(m.avgReactionTime), pct(m.wrongClickRate)],
-                  }))}
-                />
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-left text-[13px]">
+                    <thead>
+                      <tr className="text-xs text-zinc-500">
+                        <th className="pb-2 pr-4 font-medium">Candidate</th>
+                        <th className="pb-2 pr-4 font-medium">成功找到</th>
+                        <th className="pb-2 pr-4 font-medium">找到率</th>
+                        <th className="pb-2 pr-4 font-medium">95% 置信区间</th>
+                        <th className="pb-2 pr-4 font-medium">平均寻找用时</th>
+                        <th className="pb-2 pr-4 font-medium">中位寻找用时</th>
+                        <th className="pb-2 pr-4 font-medium">错点率</th>
+                        <th className="pb-2 font-medium">样本量</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {findMetrics.map((m) => {
+                        const ci = wilsonInterval(m.successfulFinds, m.impressions)
+                        return (
+                          <tr key={m.candidateId} className="border-t border-[#1c1e25] align-top">
+                            <td className="max-w-64 truncate py-2.5 pr-4 font-medium text-zinc-200">{candidateName(m.candidateId)}</td>
+                            <td className="py-2.5 pr-4 tabular-nums text-zinc-300">
+                              {m.successfulFinds} / {m.impressions}
+                            </td>
+                            <td className="py-2.5 pr-4 tabular-nums text-zinc-100">{formatPercent(m.findRate)}</td>
+                            <td className="py-2.5 pr-4 tabular-nums text-zinc-400">{formatCI(ci)}</td>
+                            <td className="py-2.5 pr-4 tabular-nums text-zinc-300">{secs(m.averageFindTime)}</td>
+                            <td className="py-2.5 pr-4 tabular-nums text-zinc-300">{secs(m.medianFindTime)}</td>
+                            <td className="py-2.5 pr-4 tabular-nums text-zinc-300">{pct(m.wrongClickRate)}</td>
+                            <td className="py-2.5">
+                              <SampleHint n={m.impressions} />
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                  <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
+                    找到率：找目标测试中成功点到该方案的比例；寻找用时只统计成功找到的轮次，与盲测反应时间是不同指标。
+                  </p>
+                </div>
               )}
             </SectionCard>
 
             <SectionCard
               title="Candidate 对比"
-              hint="勾选 2 个以上进行横向比较"
+              hint="条形仅按当前观察值排序，不构成对「最佳封面」的判定"
               right={<Badge>{compareIds.size} 已选</Badge>}
             >
-              {metrics.length === 0 ? (
+              {blindMetrics.length + findMetrics.length === 0 ? (
                 <div className="py-4 text-center text-xs text-zinc-600">当前筛选下没有数据</div>
               ) : (
                 <>
                   <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1.5">
-                    {metrics.map((m) => (
-                      <Checkbox
-                        key={m.candidateId}
-                        checked={compareIds.has(m.candidateId)}
-                        onChange={(v) => {
-                          const next = new Set(compareIds)
-                          if (v) next.add(m.candidateId)
-                          else next.delete(m.candidateId)
-                          setCompareIds(next)
-                        }}
-                        label={truncate(m.name, 24)}
-                      />
-                    ))}
+                    {[...blindMetrics, ...findMetrics]
+                      .filter((m, i, arr) => arr.findIndex((x) => x.candidateId === m.candidateId) === i)
+                      .map((m) => (
+                        <Checkbox
+                          key={m.candidateId}
+                          checked={compareIds.has(m.candidateId)}
+                          onChange={(v) => {
+                            const next = new Set(compareIds)
+                            if (v) next.add(m.candidateId)
+                            else next.delete(m.candidateId)
+                            setCompareIds(next)
+                          }}
+                          label={truncate(candidateName(m.candidateId), 24)}
+                        />
+                      ))}
                   </div>
                   {compareRows.length >= 2 ? (
                     <div className="space-y-4">
+                      {firstChoiceCompareNote ? (
+                        <div className="rounded-md border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-200/90">
+                          {firstChoiceCompareNote}
+                        </div>
+                      ) : null}
                       <div>
-                        <div className="mb-1.5 text-xs font-medium text-zinc-400">首选率 CTR(盲测)</div>
+                        <div className="mb-1.5 text-xs font-medium text-zinc-400">第一眼选择率（盲测，当前观察值）</div>
                         <BarList
-                          rows={compareRows.map((r) => ({ id: r.candidateId, name: r.name, value: r.targetClickRate, max: maxCtr, display: pct(r.targetClickRate) }))}
+                          rows={compareRows
+                            .filter((r) => r.kind === 'blind')
+                            .map((r) => {
+                              const ci = wilsonInterval(r.firstChoices, r.impressions)
+                              return {
+                                id: r.candidateId,
+                                name: r.name,
+                                value: r.firstChoiceRate,
+                                max: maxFirstChoice,
+                                display: `${formatPercent(r.firstChoiceRate)}（CI ${formatCI(ci)}）`,
+                              }
+                            })}
                           color="bg-indigo-500"
                         />
                       </div>
                       <div>
-                        <div className="mb-1.5 text-xs font-medium text-zinc-400">找到率(找目标)</div>
+                        <div className="mb-1.5 text-xs font-medium text-zinc-400">找到率（找目标，当前观察值）</div>
                         <BarList
-                          rows={compareRows.map((r) => ({ id: r.candidateId, name: r.name, value: r.findRate, max: Math.max(0.01, ...compareRows.map((x) => x.findRate)), display: pct(r.findRate) }))}
+                          rows={compareRows
+                            .filter((r) => r.kind === 'find')
+                            .map((r) => {
+                              const ci = wilsonInterval(r.successfulFinds, r.impressions)
+                              return {
+                                id: r.candidateId,
+                                name: r.name,
+                                value: r.findRate,
+                                max: maxFind,
+                                display: `${formatPercent(r.findRate)}（CI ${formatCI(ci)}）`,
+                              }
+                            })}
                           color="bg-emerald-500"
                         />
                       </div>
                       <div>
-                        <div className="mb-1.5 text-xs font-medium text-zinc-400">平均反应 / 用时(越短越好)</div>
+                        <div className="mb-1.5 text-xs font-medium text-zinc-400">盲测平均反应（仅命中轮次）</div>
                         <BarList
                           rows={(() => {
-                            const times = compareRows.map((r) => r.avgReactionTime ?? 0)
-                            const max = Math.max(0.001, ...times)
-                            return compareRows.map((r) => ({
-                              id: r.candidateId,
-                              name: r.name,
-                              value: (r.avgReactionTime ?? 0) / max,
-                              max: 1,
-                              display: secs(r.avgReactionTime),
-                            }))
+                            const blindRows = compareRows.filter((r): r is Extract<CompareRow, { kind: 'blind' }> => r.kind === 'blind')
+                            const withTime = blindRows.flatMap((r) => (r.averageReactionTime != null ? [r.averageReactionTime] : []))
+                            const max = Math.max(0.001, ...withTime)
+                            return blindRows.flatMap((r) =>
+                              r.averageReactionTime == null
+                                ? []
+                                : [
+                                    {
+                                      id: r.candidateId,
+                                      name: r.name,
+                                      value: r.averageReactionTime / max,
+                                      max: 1,
+                                      display: formatSeconds(r.averageReactionTime),
+                                    },
+                                  ],
+                            )
                           })()}
                           color="bg-sky-500"
                         />
                       </div>
                       <div>
-                        <div className="mb-1.5 text-xs font-medium text-zinc-400">错点率(找目标,越低越好)</div>
+                        <div className="mb-1.5 text-xs font-medium text-zinc-400">错点率（找目标，越低越好）</div>
                         <BarList
-                          rows={compareRows.map((r) => ({
-                            id: r.candidateId,
-                            name: r.name,
-                            value: r.wrongClickRate,
-                            max: Math.max(0.01, ...compareRows.map((x) => x.wrongClickRate)),
-                            display: pct(r.wrongClickRate),
-                          }))}
+                          rows={compareRows
+                            .filter((r) => r.kind === 'find')
+                            .map((r) => ({
+                              id: r.candidateId,
+                              name: r.name,
+                              value: r.wrongClickRate,
+                              max: Math.max(0.01, ...compareRows.filter((x) => x.kind === 'find').map((x) => x.wrongClickRate)),
+                              display: pct(r.wrongClickRate),
+                            }))}
                           color="bg-rose-500"
                         />
                       </div>
@@ -251,7 +398,7 @@ export function ResultsPage() {
       <ConfirmModal
         open={clearOpen}
         title="清空测试记录"
-        message={`删除项目「${project.name}」的全部 ${sessions.length} 条测试记录?Candidate 与封面不受影响,但指标无法恢复。`}
+        message={`删除项目「${project.name}」的全部 ${sessions.length} 条测试记录？Candidate 与封面不受影响，但指标无法恢复。`}
         confirmText="清空"
         onConfirm={() => {
           void sessionRepository.deleteByProject(project.id).then(reload)
@@ -262,37 +409,10 @@ export function ResultsPage() {
   )
 }
 
-function MetricTable({ head, rows }: { head: string[]; rows: Array<{ id: string; name: string; cells: string[] }> }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[560px] text-left text-[13px]">
-        <thead>
-          <tr className="text-xs text-zinc-500">
-            {head.map((h, i) => (
-              <th key={i} className="pb-2 pr-4 font-medium last:pr-0">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.id} className="border-t border-[#1c1e25]">
-              <td className="max-w-64 truncate py-2 pr-4 font-medium text-zinc-200">{r.name}</td>
-              {r.cells.map((c, i) => (
-                <td key={i} className="py-2 pr-4 tabular-nums text-zinc-300 last:pr-0">
-                  {c}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
 function BarList({ rows, color }: { rows: Array<{ id: string; name: string; value: number; max: number; display: string }>; color: string }) {
+  if (rows.length === 0) {
+    return <div className="py-2 text-center text-xs text-zinc-600">当前筛选下没有该指标的数据</div>
+  }
   return (
     <div className="space-y-1.5">
       {rows.map((r) => (
@@ -301,7 +421,7 @@ function BarList({ rows, color }: { rows: Array<{ id: string; name: string; valu
           <div className="h-4 min-w-0 flex-1 rounded-sm bg-[#1a1c23]">
             <div className={`h-full rounded-sm ${color}`} style={{ width: `${Math.max(2, (r.value / r.max) * 100)}%` }} />
           </div>
-          <span className="w-16 shrink-0 text-right text-xs tabular-nums text-zinc-400">{r.display}</span>
+          <span className="w-44 shrink-0 text-right text-xs tabular-nums text-zinc-400">{r.display}</span>
         </div>
       ))}
     </div>
