@@ -66,7 +66,6 @@ export function QuickModePage() {
 
   const [phase, setPhase] = useState<Phase>('edit')
   const [seed, setSeed] = useState('quick-init')
-  const [positionMode, setPositionMode] = useState<'random' | 'fixed'>('random')
   const [manualPosition, setManualPosition] = useState<number | null>(null)
   const [dragActive, setDragActive] = useState(false)
   const dragRef = useRef<{ startX: number; startY: number; pointerId: number; active: boolean } | null>(null)
@@ -83,12 +82,11 @@ export function QuickModePage() {
 
   const viewport = device === 'desktop' ? { w: 1600, h: 900 } : { w: 390, h: 844 }
 
-  // 编辑阶段: 拖动决定位置(默认左上角第 1 格);测试阶段: 随机 或 拖定位置
+  // 未开始测试: 静态预览, 位置由拖动决定(默认左上角第 1 格);开始测试后每轮随机
   const position = useMemo(() => {
     if (phase === 'edit') return manualPosition ?? 0
-    if (positionMode === 'fixed') return Math.min(manualPosition ?? 0, 12)
     return null
-  }, [phase, manualPosition, positionMode])
+  }, [phase, manualPosition])
 
   const feed = useMemo(() => {
     const rng = new RandomEngine(seed)
@@ -241,21 +239,6 @@ export function QuickModePage() {
           <option value="10">10秒</option>
           <option value="0">不限</option>
         </Select>
-        <div className="flex items-center gap-1.5" title="固定 = 测试时使用你在预览里拖动的位置;随机 = 每轮随机出现">
-          <Segmented<'random' | 'fixed'>
-            value={positionMode}
-            onChange={setPositionMode}
-            options={[
-              { value: 'random', label: '随机位' },
-              { value: 'fixed', label: '拖定位' },
-            ]}
-          />
-          {positionMode === 'fixed' ? (
-            <span className="rounded bg-indigo-500/15 px-1.5 py-0.5 text-[11px] font-medium text-indigo-300">
-              第 {(manualPosition ?? 0) + 1} 位
-            </span>
-          ) : null}
-        </div>
         <span className="hidden text-xs text-zinc-500 xl:inline">
           左上角第 1 格是你的视频 · 点击它设置封面和标题 · 干扰封面来自{platform === 'bilibili' ? 'B站' : '油管'}真实热门
         </span>
@@ -351,7 +334,7 @@ export function QuickModePage() {
               </div>
               <div className="mt-5 flex justify-center gap-2">
                 <Button variant="primary" onClick={startRound}>
-                  再来一轮(位置随机)
+                  再来一轮
                 </Button>
                 <Button
                   onClick={() => {
