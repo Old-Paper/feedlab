@@ -274,9 +274,9 @@ async function fetchYouTube() {
         const list = await timedFetch(`${base}/trending?region=US`, {})
         if (!Array.isArray(list) || list.length === 0) continue
         for (const it of list) {
-          if (hot.length >= HOT_N) break
           const videoId = String(it.url ?? '').split('v=')[1] ?? ''
           if (!videoId) continue
+          if ((it.isLive ?? it.livestream) === true) continue
           hot.push({
             id: `yt-${videoId}`,
             title: it.title ?? '',
@@ -291,10 +291,15 @@ async function fetchYouTube() {
         console.warn(`[yt] piped ${base} failed:`, e.message)
       }
     }
+    // trending 列表可能混入直播/即将播放,按播放量降序取真正的"最火"
+    hot.sort((a, b) => b.views - a.views)
+    hot.length = Math.min(hot.length, HOT_N)
+    console.warn(`[yt] hot fallback (piped): ${hot.length}`)
   }
   // 不太火: 按上传时间排序的搜索结果,只保留播放量 < 5万 的视频
-  const keywords = ['minecraft', 'cooking', 'tech review', 'vlog', 'study', 'diy']
+  const keywords = ['minecraft', 'cooking', 'tech review', 'vlog', 'study', 'diy', 'gaming', 'travel', 'fishing', 'craft']
   const seen = new Set(hot.map((h) => h.id))
+  let kwIndex = 0
   for (const kw of keywords) {
     if (low.length >= LOW_N) break
     try {
@@ -307,18 +312,21 @@ async function fetchYouTube() {
       if (!data) continue
       const items = []
       collectVideoRenderers(data, items, new Set())
+      let taken = 0
       for (const item of items) {
-        if (low.length >= LOW_N) break
+        if (low.length >= LOW_N || taken >= 4) break
         const mapped = toEntry(item)
         if (!mapped.title || !mapped.channel || mapped.durationSec <= 0) continue
         if (mapped.views > 50000) continue
         if (seen.has(mapped.id)) continue
         seen.add(mapped.id)
         low.push(mapped)
+        taken += 1
       }
     } catch (e) {
       console.warn(`[yt] low "${kw}" failed:`, e.message)
     }
+    kwIndex += 1
   }
   return { hot, low }
 }
