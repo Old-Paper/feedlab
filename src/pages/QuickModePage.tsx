@@ -66,6 +66,11 @@ export function QuickModePage() {
 
   const [phase, setPhase] = useState<Phase>('edit')
   const [seed, setSeed] = useState('quick-init')
+  const [positionMode, setPositionMode] = useState<'random' | 'fixed'>('random')
+  const [manualPosition, setManualPosition] = useState<number | null>(null)
+  const [dragActive, setDragActive] = useState(false)
+  const dragRef = useRef<{ startX: number; startY: number; pointerId: number; active: boolean } | null>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
   const [round, setRound] = useState(0)
   const [score, setScore] = useState({ rounds: 0, hits: 0 })
   const [lastResult, setLastResult] = useState<{ hit: boolean; reactionTime: number; position: number } | null>(null)
@@ -77,6 +82,13 @@ export function QuickModePage() {
   const assetUrl = useAssetUrl(assetId)
 
   const viewport = device === 'desktop' ? { w: 1600, h: 900 } : { w: 390, h: 844 }
+
+  // 编辑阶段: 拖动决定位置(默认左上角第 1 格);测试阶段: 随机 或 拖定位置
+  const position = useMemo(() => {
+    if (phase === 'edit') return manualPosition ?? 0
+    if (positionMode === 'fixed') return Math.min(manualPosition ?? 0, 12)
+    return null
+  }, [phase, manualPosition, positionMode])
 
   const feed = useMemo(() => {
     const rng = new RandomEngine(seed)
@@ -96,15 +108,15 @@ export function QuickModePage() {
       durationSec: 615,
       publishedHoursAgo: 26,
     }
-    const position = phase === 'edit' ? 0 : rng.int(0, mocks.length)
+    const pos = position ?? rng.int(0, mocks.length)
     const items: FeedVideo[] = []
     let cursor = 0
     for (let i = 0; i < mocks.length + 1; i++) {
-      if (i === position) items.push(candidate)
+      if (i === pos) items.push(candidate)
       else items.push(toFeedVideo(mocks[cursor++], `${cursor}-${seed}`))
     }
-    return { items, position }
-  }, [pool, seed, title, channel, assetId, platform, phase])
+    return { items, position: pos }
+  }, [pool, seed, title, channel, assetId, platform, position])
 
   // 倒计时结束 → 展示计时
   useEffect(() => {
@@ -135,6 +147,52 @@ export function QuickModePage() {
     setLastResult({ hit, reactionTime, position: feed.position + 1 })
     setPhase('result')
   }
+
+  // —— 拖动候选卡(编辑阶段): pointer 事件自定义拖拽, 桌面鼠标与手机触摸通用 ——
+  const onStagePointerDown = (e: React.PointerEvent) => {
+    if (phase !== 'edit') return
+    const target = (e.target as HTMLElement).closest('[data-inspect="thumb"]') as HTMLElement | null
+    if (!target) return
+    const thumbs = [...document.querySelectorAll('[data-inspect="thumb"]')]
+    if (thumbs.indexOf(target) !== feed.position) return // 只能拖"你的视频"卡
+    dragRef.current = { startX: e.clientX, startY: e.clientY, pointerId: e.pointerId, active: false }
+    try { stageRef.current?.setPointerCapture(e.pointerId) } catch { /* 合成事件可能无法捕获 */ }
+  }
+  const onStagePointerMove = (e: React.PointerEvent) => {
+    const st = dragRef.current
+    if (!st) return
+    if (!st.active && Math.hypot(e.clientX - st.startX, e.clientY - st.startY) > 6) {
+      st.active = true
+      setDragActive(true)
+    }
+  }
+  const onStagePointerUp = (e: React.PointerEvent) => {
+    const st = dragRef.current
+    if (!st) return
+    dragRef.current = null
+    try {
+      stageRef.current?.releasePointerCapture?.(e.pointerId)
+    } catch {
+      // capture 未建立时忽略
+    }
+    setDragActive(false)
+    if (!st.active) return
+    const hitEl = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-inspect="thumb"]') as HTMLElement | null
+    if (!hitEl) return
+    const thumbs = [...document.querySelectorAll('[data-inspect="thumb"]')]
+    const idx = thumbs.indexOf(hitEl)
+    if (idx >= 0 && idx !== feed.position) {
+      setManualPosition(idx)
+      toast.info(`已移动到第 ${idx + 1} 位`)
+    }
+  }
+  // 拖动中禁止触摸页面滚动, 避免手机上拖动与滚动打架
+  useEffect(() => {
+    if (!dragActive) return
+    const block = (e: TouchEvent) => e.preventDefault()
+    window.addEventListener('touchmove', block, { passive: false })
+    return () => window.removeEventListener('touchmove', block)
+  }, [dragActive])
 
   const questionBanner = phase === 'question' ? (
     <div className="absolute left-1/2 top-5 z-30 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-indigo-500/90 px-4 py-1.5 text-xs font-medium text-white shadow-lg">
@@ -183,6 +241,21 @@ export function QuickModePage() {
           <option value="10">10秒</option>
           <option value="0">不限</option>
         </Select>
+        <div className="flex items-center gap-1.5" title="固定 = 测试时使用你在预览里拖动的位置;随机 = 每轮随机出现">
+          <Segmented<'random' | 'fixed'>
+            value={positionMode}
+            onChange={setPositionMode}
+            options={[
+              { value: 'random', label: '随机位' },
+              { value: 'fixed', label: '拖定位' },
+            ]}
+          />
+          {positionMode === 'fixed' ? (
+            <span className="rounded bg-indigo-500/15 px-1.5 py-0.5 text-[11px] font-medium text-indigo-300">
+              第 {(manualPosition ?? 0) + 1} 位
+            </span>
+          ) : null}
+        </div>
         <span className="hidden text-xs text-zinc-500 xl:inline">
           左上角第 1 格是你的视频 · 点击它设置封面和标题 · 干扰封面来自{platform === 'bilibili' ? 'B站' : '油管'}真实热门
         </span>
@@ -205,7 +278,15 @@ export function QuickModePage() {
       </header>
 
       {/* 舞台 */}
-      <div className="relative flex min-h-0 flex-1 flex-col p-3 sm:p-4">
+      <div
+        ref={stageRef}
+        className={`relative flex min-h-0 flex-1 flex-col p-3 sm:p-4 ${dragActive ? 'cursor-grabbing select-none' : ''}`}
+        style={dragActive ? { touchAction: 'none' } : undefined}
+        onPointerDown={onStagePointerDown}
+        onPointerMove={onStagePointerMove}
+        onPointerUp={onStagePointerUp}
+        onPointerCancel={onStagePointerUp}
+      >
         <DeviceViewport width={viewport.w} height={viewport.h} mobile={device === 'mobile'}>
           <div className="h-full" key={`${seed}-${phase}`}>
             <FeedRenderer
@@ -233,7 +314,11 @@ export function QuickModePage() {
         {phase === 'edit' ? (
           <div className="pointer-events-none absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[11px] text-zinc-300">
             <Pencil size={12} />
-            {title && assetId ? `已就绪:${title.slice(0, 18)}` : '点击左上角第 1 格,设置封面和标题'}
+            {dragActive
+              ? '拖动中 —— 松手放置到目标位置'
+              : title && assetId
+                ? `已就绪:${title.slice(0, 14)} · 拖动这张卡可调整位置`
+                : '点击第 1 格设置封面和标题 · 也可直接拖动它换位置'}
           </div>
         ) : null}
 
