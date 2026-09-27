@@ -27,6 +27,7 @@ export interface SimulationState {
   fixedPosition: number
   useFixedSeed: boolean
   seed: string
+  useRealPool: boolean
   inspectEnabled: boolean
   candidateId: string | null
   ytMobileStyle: 'standard' | 'experimental'
@@ -59,6 +60,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   fixedPosition: 3,
   useFixedSeed: false,
   seed: randomSeed(),
+  useRealPool: false,
   inspectEnabled: false,
   candidateId: null,
   ytMobileStyle: 'standard',
@@ -92,6 +94,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         fixedPosition: s.fixedPosition,
         useFixedSeed: s.useFixedSeed,
         seed: s.seed || randomSeed(),
+        useRealPool: s.useRealPool,
         blindDuration: s.blindDuration,
         rounds: s.rounds,
         candidateScope: s.candidateScope,

@@ -19,6 +19,7 @@ export function defaultTestSettings(): TestSettings {
     fixedPosition: 3,
     useFixedSeed: false,
     seed: randomSeed(),
+    useRealPool: false,
     blindDuration: 5,
     rounds: 10,
     candidateScope: 'all',

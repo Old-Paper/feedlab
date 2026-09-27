@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { FeedVideo, PlatformEnv } from '../../types'
 import { useAssetUrl } from '../../hooks/useAssetUrl'
 import { getThumbTransform } from '../../lib/crop'
@@ -12,7 +12,12 @@ import { countVisibleChars, countWrappedLines } from '../../lib/textMeasure'
 
 export function ThumbImage({ video, env, className }: { video: FeedVideo; env: PlatformEnv; className?: string }) {
   const assetUrl = useAssetUrl(video.thumbAssetId)
-  const src = video.thumbSrc ?? assetUrl ?? makePlaceholderThumb('无封面')
+  const rawSrc = video.thumbSrc ?? assetUrl ?? makePlaceholderThumb('无封面')
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    setFailed(false)
+  }, [rawSrc])
+  const src = failed ? makePlaceholderThumb('封面加载失败') : rawSrc
   const transform = video.kind === 'candidate' ? getThumbTransform(video.thumbCrop, env) : undefined
   return (
     <img
@@ -20,6 +25,10 @@ export function ThumbImage({ video, env, className }: { video: FeedVideo; env: P
       alt=""
       draggable={false}
       className={className}
+      // Bilibili 图片 CDN 按 Referer 防盗链(第三方站返回 403,空 Referer 放行),
+      // 因此封面一律不带 Referer 加载
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
       style={transform ? { transform, transformOrigin: 'center center' } : undefined}
     />
   )

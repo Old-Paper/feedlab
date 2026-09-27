@@ -6,6 +6,7 @@ import { pickCandidatesForTest, useSimulationStore } from '../stores/simulationS
 import { useTestStore } from '../stores/testStore'
 import { buildRoundPlans } from '../features/testing/balancedScheduler'
 import { candidateById, generateFeed, type FeedOptions } from '../features/testing/feedGenerator'
+import { useCoverPool } from '../hooks/useCoverPool'
 import { DeviceViewport } from '../components/DeviceViewport'
 import { FeedRenderer } from '../platforms'
 import { CountdownOverlay } from '../components/Countdown'
@@ -26,14 +27,16 @@ export function BlindTestPage() {
 
   const enabledCount = project.candidates.filter((c) => c.enabled).length
 
+  const pool = useCoverPool(sim.platform, sim.useRealPool)
   const options: FeedOptions = useMemo(
     () => ({
       platform: sim.platform,
       mockCount: sim.mockCount,
       randomizeFeedOrder: sim.randomizeFeedOrder,
       randomizeMetadata: sim.randomizeMetadata,
+      poolVideos: pool ?? undefined,
     }),
-    [sim.platform, sim.mockCount, sim.randomizeFeedOrder, sim.randomizeMetadata],
+    [sim.platform, sim.mockCount, sim.randomizeFeedOrder, sim.randomizeMetadata, pool],
   )
 
   const plan = test.plans[test.roundIndex]

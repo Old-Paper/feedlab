@@ -3,6 +3,7 @@ import { Eye, Info, X } from 'lucide-react'
 import { useProjectStore } from '../stores/projectStore'
 import { useSimulationStore, resolvePreviewPosition } from '../stores/simulationStore'
 import { candidateById, derivePosition, generateFeed } from '../features/testing/feedGenerator'
+import { useCoverPool } from '../hooks/useCoverPool'
 import { DeviceViewport } from '../components/DeviceViewport'
 import { FeedRenderer } from '../platforms'
 import { InspectProvider, type InspectInfo } from '../components/feed/primitives'
@@ -59,6 +60,7 @@ export function SimulatorPage() {
   const candidate = candidateById(project, sim.candidateId)
   const totalSlots = sim.mockCount + (candidate ? 1 : 0)
   const position = resolvePreviewPosition(sim, totalSlots, sim.seed, derivePosition)
+  const pool = useCoverPool(sim.platform, sim.useRealPool)
 
   const feed = useMemo(
     () =>
@@ -69,12 +71,13 @@ export function SimulatorPage() {
           mockCount: sim.mockCount,
           randomizeFeedOrder: sim.randomizeFeedOrder,
           randomizeMetadata: sim.randomizeMetadata,
+          poolVideos: pool ?? undefined,
         },
         candidate,
         seed: sim.seed,
         position,
       }),
-    [project, sim.platform, sim.mockCount, sim.randomizeFeedOrder, sim.randomizeMetadata, sim.seed, candidate, position],
+    [project, sim.platform, sim.mockCount, sim.randomizeFeedOrder, sim.randomizeMetadata, sim.seed, candidate, position, pool],
   )
 
   return (

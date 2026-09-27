@@ -81,6 +81,15 @@ export function TestSettingsTab() {
           <div className="flex flex-col gap-2 pb-0.5">
             <Checkbox label="打乱信息流顺序(Randomize Feed Order)" checked={s.randomizeFeedOrder} onChange={(v) => set({ randomizeFeedOrder: v })} />
             <Checkbox label="随机化元数据(播放量 / 弹幕 / 时间抖动)" checked={s.randomizeMetadata} onChange={(v) => set({ randomizeMetadata: v })} />
+            <Checkbox
+              label={
+                <span title="开启后干扰视频使用每日自动抓取的真实视频(按当前平台: 全站最火 + 不太火混合),当天固定、次日更新;油管数据由部署服务器每日抓取">
+                  干扰视频使用真实封面池(每日更新)
+                </span>
+              }
+              checked={s.useRealPool}
+              onChange={(v) => set({ useRealPool: v })}
+            />
           </div>
         </div>
       </SectionCard>

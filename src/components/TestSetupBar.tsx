@@ -15,6 +15,7 @@ type SimSlice = Pick<
   | 'mockCount'
   | 'useFixedSeed'
   | 'seed'
+  | 'useRealPool'
   | 'inspectEnabled'
   | 'candidateId'
 >
@@ -181,6 +182,15 @@ export function TestSetupBar({
           ))}
         </Select>
       ) : null}
+      <Checkbox
+        label={
+          <span title="开启后干扰视频使用每日自动抓取的真实视频(按当前平台: 全站最火 + 不太火混合),当天固定、次日更新">
+            真实封面池
+          </span>
+        }
+        checked={sim.useRealPool}
+        onChange={(v) => patch({ useRealPool: v })}
+      />
       <div className="flex items-center gap-1.5">
         <Checkbox label="固定 Seed" checked={sim.useFixedSeed} onChange={(v) => patch({ useFixedSeed: v })} />
         <TextInput value={sim.seed} onChange={(e) => patch({ seed: e.target.value })} className="w-36 font-mono text-xs" />

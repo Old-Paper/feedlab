@@ -132,6 +132,8 @@ export interface TestSettings {
   fixedPosition: number
   useFixedSeed: boolean
   seed: string
+  /** 干扰视频使用每日抓取的真实封面池(按平台),而不是内置程序生成视频。 */
+  useRealPool: boolean
   blindDuration: BlindDuration
   rounds: number
   candidateScope: 'all' | 'single'
@@ -148,6 +150,8 @@ export interface MockVideo {
   publishedHoursAgo: number
   /** Set when the user uploaded a real cover image. */
   thumbAssetId?: string
+  /** Direct image URL (每日真实封面池的封面热链平台 CDN). */
+  thumbSrcUrl?: string
   custom: boolean
   enabled: boolean
 }

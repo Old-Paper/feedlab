@@ -6,6 +6,7 @@ import { pickCandidatesForTest, useSimulationStore } from '../stores/simulationS
 import { useTestStore } from '../stores/testStore'
 import { buildRoundPlans } from '../features/testing/balancedScheduler'
 import { candidateById, generateFeed, type FeedOptions } from '../features/testing/feedGenerator'
+import { useCoverPool } from '../hooks/useCoverPool'
 import { DeviceViewport } from '../components/DeviceViewport'
 import { FeedRenderer } from '../platforms'
 import { Button, EmptyState, Stat } from '../components/ui'
@@ -29,14 +30,16 @@ export function FindTargetPage() {
     return sim.platform === 'youtube' ? ch.youtube.channelName || ch.name : ch.bilibili.uploaderName || ch.name
   }, [project.channel, sim.platform])
 
+  const pool = useCoverPool(sim.platform, sim.useRealPool)
   const options: FeedOptions = useMemo(
     () => ({
       platform: sim.platform,
       mockCount: sim.mockCount,
       randomizeFeedOrder: sim.randomizeFeedOrder,
       randomizeMetadata: sim.randomizeMetadata,
+      poolVideos: pool ?? undefined,
     }),
-    [sim.platform, sim.mockCount, sim.randomizeFeedOrder, sim.randomizeMetadata],
+    [sim.platform, sim.mockCount, sim.randomizeFeedOrder, sim.randomizeMetadata, pool],
   )
 
   const plan = test.plans[test.roundIndex]

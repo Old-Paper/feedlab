@@ -3,10 +3,13 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # 每天定时刷新一次真实封面池并重新部署 (UTC 01:00 = 北京 09:00)
+  schedule:
+    - cron: '0 1 * * *'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -23,6 +26,20 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      # 每日定时/手动触发时: 抓取一次真实的"最火 + 不太火"封面池并提交,
+      # 之后当天所有部署都使用这份固定的数据,直到第二天再刷新。
+      - name: Refresh daily cover pool
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: node scripts/fetch-covers.mjs
+      - name: Commit refreshed pool
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/coverPool.json
+          git diff --cached --quiet || git commit -m "chore: refresh daily cover pool [skip ci]"
+          git push
       - name: Install dependencies
         run: npm ci
       - name: Build

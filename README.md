@@ -51,6 +51,13 @@ src/
 
 ## 关键设计
 
+- **每日真实封面池**:GitHub Actions 每天定时(北京 09:00)运行 `scripts/fetch-covers.mjs`,
+  从 Bilibili 官方公开接口(综合热门第 1 页 = 全站最火;深页播放量最低段 = 不太火)与
+  YouTube 页面数据(trending = 最火;按上传时间排序且播放 < 5万 = 不太火)抓取各 16+16 条
+  真实视频的封面/标题/频道/播放量,生成 `public/data/coverPool.json` 并提交。**每天只更新
+  一次,当天所有访客使用同一份数据**。在模拟器/盲测/找目标/A-B 工具栏勾选「真实封面池」
+  后,干扰视频自动替换为当前所选平台的真实视频池;封面直接热链平台 CDN(`no-referrer`)。
+  本地手动刷新:`node scripts/fetch-covers.mjs`。
 - **Seeded Random**:cyrb128 哈希种子 + sfc32 PRNG。相同 Seed + 相同配置 = 完全相同的
   Feed 顺序、Candidate 位置、元数据抖动。A/B 对比中两图共享同一 Seed,唯一变量是 Candidate。
 - **Balanced Scheduler**:shuffled-bag 轮换。每个 Candidate(以及随机位置)在一袋内恰好出现
