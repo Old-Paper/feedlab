@@ -301,35 +301,33 @@ async function fetchYouTube() {
     console.warn(`[yt] hot fallback (piped): ${hot.length}`)
   }
   // 不太火: 按上传时间排序的搜索结果,只保留播放量 < 5万 的视频
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   const keywords = ['minecraft', 'cooking', 'tech review', 'vlog', 'study', 'diy', 'gaming', 'travel', 'fishing', 'craft']
-  let kwIndex = 0
   for (const kw of keywords) {
     if (low.length >= LOW_N) break
-    try {
-      const html = await timedFetch(
-        `https://www.youtube.com/results?search_query=${encodeURIComponent(kw)}&sp=CAI`,
-        YT_HEADERS,
-        'text',
-      )
-      const data = extractYtInitialData(html)
-      if (!data) continue
-      const items = []
-      collectVideoRenderers(data, items, new Set())
-      let taken = 0
-      for (const item of items) {
-        if (low.length >= LOW_N || taken >= 4) break
-        const mapped = toEntry(item)
-        if (!mapped.title || !mapped.channel || mapped.durationSec <= 0) continue
-        if (mapped.views > 50000) continue
-        if (seen.has(mapped.id)) continue
-        seen.add(mapped.id)
-        low.push(mapped)
-        taken += 1
+    let entries = null
+    for (let attempt = 0; attempt < 2 && entries === null; attempt++) {
+      await sleep(900)
+      try {
+        entries = await parsePage(`https://www.youtube.com/results?search_query=${encodeURIComponent(kw)}&sp=CAI`)
+      } catch (e) {
+        entries = null
       }
-    } catch (e) {
-      console.warn(`[yt] low "${kw}" failed:`, e.message)
     }
-    kwIndex += 1
+    if (entries === null) {
+      console.warn(`[yt] low "${kw}" failed`)
+      continue
+    }
+    let taken = 0
+    for (const mapped of entries) {
+      if (low.length >= LOW_N || taken >= 4) break
+      if (!mapped.title || !mapped.channel || mapped.durationSec <= 0) continue
+      if (mapped.views > 50000) continue
+      if (seen.has(mapped.id)) continue
+      seen.add(mapped.id)
+      low.push(mapped)
+      taken += 1
+    }
   }
   return { hot, low }
 }
