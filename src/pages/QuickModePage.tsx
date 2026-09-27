@@ -249,10 +249,6 @@ export function QuickModePage() {
           </div>
         ) : null}
 
-        {phase === 'question' ? (
-          <div className="absolute inset-0 z-20 bg-transparent" onMouseDown={(e) => e.stopPropagation()} />
-        ) : null}
-
         {phase === 'result' && lastResult ? (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#0b0d11]/90 p-4">
             <div className="w-full max-w-sm rounded-lg border border-[#23252e] bg-[#14161c] p-6 text-center">
