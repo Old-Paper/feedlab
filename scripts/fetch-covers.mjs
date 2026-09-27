@@ -239,33 +239,38 @@ async function verifyPic(entry) {
 async function fetchYouTube() {
   const hot = []
   const low = []
-  const toEntry = (item) => (item.kind === 'lockup' ? mapYtLockup(item.r) : mapYt(item.r))
-  try {
-    const html = await timedFetch('https://www.youtube.com/feed/trending', YT_HEADERS, 'text')
+  const seen = new Set()
+  const parsePage = async (url) => {
+    const toEntry = (item) => (item.kind === 'lockup' ? mapYtLockup(item.r) : mapYt(item.r))
+    const html = await timedFetch(url, YT_HEADERS, 'text')
     const data = extractYtInitialData(html)
-    if (!data) throw new Error('ytInitialData not found (consent page?)')
+    if (!data) return []
     const items = []
     collectVideoRenderers(data, items, new Set())
-    const nVideo = items.filter((i) => i.kind === 'video').length
-    const nLockup = items.filter((i) => i.kind === 'lockup').length
-    console.warn(`[yt] hot debug: htmlLen=${html.length} items=${items.length} video=${nVideo} lockup=${nLockup}`)
-    if (items[0]) {
-      const sample = items[0].kind === 'lockup' ? mapYtLockup(items[0].r) : mapYt(items[0].r)
-      console.warn(`[yt] hot sample: ${JSON.stringify(sample).slice(0, 220)}`)
-    }
-    const seen = new Set()
-    for (const item of items) {
-      if (hot.length >= HOT_N) break
-      const mapped = toEntry(item)
-      if (!mapped.title || !mapped.channel || mapped.durationSec <= 0) continue
-      if (seen.has(mapped.id)) continue
-      seen.add(mapped.id)
-      hot.push(mapped)
-    }
-  } catch (e) {
-    console.warn('[yt] hot failed:', e.message)
+    return items.map(toEntry)
   }
-  // trending 解析失败时的兜底: 公共 Piped 实例的 trending 接口
+  // 最火: trending 页对未登录服务器请求不内嵌视频数据,改用大众关键词默认排序
+  // (相关度)的搜索结果 —— 首屏几乎全是百万级播放的视频,取 views >= 200万 的条目
+  const hotKeywords = ['minecraft', 'music video', 'gaming', 'news', 'cooking', 'science']
+  for (const kw of hotKeywords) {
+    if (hot.length >= HOT_N) break
+    try {
+      const entries = await parsePage(`https://www.youtube.com/results?search_query=${encodeURIComponent(kw)}`)
+      let taken = 0
+      for (const mapped of entries) {
+        if (hot.length >= HOT_N || taken >= 3) break
+        if (!mapped.title || !mapped.channel || mapped.durationSec <= 0) continue
+        if (mapped.views < 2000000) continue
+        if (seen.has(mapped.id)) continue
+        seen.add(mapped.id)
+        hot.push(mapped)
+        taken += 1
+      }
+    } catch (e) {
+      console.warn(`[yt] hot "${kw}" failed:`, e.message)
+    }
+  }
+  // 兜底: 公共 Piped 实例的 trending 接口
   if (hot.length < 4) {
     const instances = ['https://pipedapi.kavin.rocks', 'https://pipedapi.adminforge.de', 'https://api.piped.private.coffee']
     for (const base of instances) {
@@ -291,14 +296,12 @@ async function fetchYouTube() {
         console.warn(`[yt] piped ${base} failed:`, e.message)
       }
     }
-    // trending 列表可能混入直播/即将播放,按播放量降序取真正的"最火"
     hot.sort((a, b) => b.views - a.views)
     hot.length = Math.min(hot.length, HOT_N)
     console.warn(`[yt] hot fallback (piped): ${hot.length}`)
   }
   // 不太火: 按上传时间排序的搜索结果,只保留播放量 < 5万 的视频
   const keywords = ['minecraft', 'cooking', 'tech review', 'vlog', 'study', 'diy', 'gaming', 'travel', 'fishing', 'craft']
-  const seen = new Set(hot.map((h) => h.id))
   let kwIndex = 0
   for (const kw of keywords) {
     if (low.length >= LOW_N) break
