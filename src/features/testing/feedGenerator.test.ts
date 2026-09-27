@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { derivePosition, generateFeed } from './feedGenerator'
-import type { Candidate, ChannelProfile, Project, TestSettings } from '../../types'
+import type { Candidate, ChannelProfile, MockVideo, Platform, Project, TestSettings } from '../../types'
 
 function makeThumbnail(id: string, name: string): Project['thumbnails'][number] {
   return {
@@ -59,7 +59,8 @@ function makeProject(): Project {
     useFixedSeed: false,
     seed: 'fixture-seed',
     useRealPool: false,
-    distractorCategory: 'normal',
+    competitionEnvironment: 'site',
+    lockCompetitionEnvironment: false,
     blindDuration: 5,
     rounds: 10,
     candidateScope: 'all',
@@ -299,5 +300,76 @@ describe('feedGenerator — 空池与禁用', () => {
     expect(feed.items).toHaveLength(5)
     const ids = new Set(feed.items.map((i) => i.id))
     expect(ids.size).toBe(5)
+  })
+})
+
+
+describe('feedGenerator — 我的竞品库环境', () => {
+  function withMockVideos(videos: MockVideo[]): Project {
+    const project = makeProject()
+    project.mockVideos = videos
+    return project
+  }
+
+  const mv = (id: string, title: string, platform?: Platform, enabled = true): MockVideo => ({
+    id,
+    title,
+    channel: '竞品频道',
+    views: 50000,
+    durationSec: 300,
+    publishedHoursAgo: 48,
+    platform,
+    custom: true,
+    enabled,
+  })
+
+  it('competitors 环境只使用启用且平台匹配的竞品视频', () => {
+    const project = withMockVideos([
+      mv('c1', '竞品-油管', 'youtube'),
+      mv('c2', '竞品-B站', 'bilibili'),
+      mv('c3', '竞品-通用'),
+      mv('c4', '竞品-禁用', 'youtube', false),
+    ])
+    const feed = generateFeed({
+      project,
+      options: { platform: 'youtube', mockCount: 3, randomizeFeedOrder: false, randomizeMetadata: false, category: 'competitors' },
+      candidate: null,
+      seed: 'comp-seed',
+      position: 0,
+    })
+    const titles = feed.items.map((i) => i.title)
+    expect(titles).toContain('竞品-油管')
+    expect(titles).toContain('竞品-通用')
+    expect(titles).not.toContain('竞品-B站')
+    expect(titles).not.toContain('竞品-禁用')
+    // 内置干扰库不应出现
+    expect(titles).not.toContain('我在全是岩浆的世界生存了100天')
+  })
+
+  it('竞品库数量不足 mockCount 时重复补齐且 id 唯一', () => {
+    const project = withMockVideos([mv('c1', '竞品一'), mv('c2', '竞品二')])
+    const feed = generateFeed({
+      project,
+      options: { platform: 'youtube', mockCount: 5, randomizeFeedOrder: false, randomizeMetadata: false, category: 'competitors' },
+      candidate: null,
+      seed: 'small-comp',
+      position: 0,
+    })
+    expect(feed.items).toHaveLength(5)
+    expect(new Set(feed.items.map((i) => i.id)).size).toBe(5)
+  })
+
+  it('site 环境不使用竞品专属过滤, 内置库仍然可用', () => {
+    const project = withMockVideos([mv('c1', '竞品-油管', 'youtube')])
+    const feed = generateFeed({
+      project,
+      options: { platform: 'youtube', mockCount: 6, randomizeFeedOrder: false, randomizeMetadata: false, category: 'site' },
+      candidate: null,
+      seed: 'site-seed',
+      position: 0,
+    })
+    const titles = feed.items.map((i) => i.title)
+    expect(titles).toContain('竞品-油管')
+    expect(titles).toContain('【硬核】CPU到底是怎么造出来的?从沙子到芯片')
   })
 })

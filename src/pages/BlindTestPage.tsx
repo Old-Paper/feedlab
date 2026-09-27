@@ -10,6 +10,7 @@ import { useCoverPool } from '../hooks/useCoverPool'
 import { DeviceViewport } from '../components/DeviceViewport'
 import { FeedRenderer } from '../platforms'
 import { CountdownOverlay } from '../components/Countdown'
+import { ExperimentSummary, environmentLabel } from '../components/ExperimentSummary'
 import { Button } from '../components/ui'
 import { toast } from '../stores/toastStore'
 import { formatSeconds } from '../lib/format'
@@ -27,14 +28,18 @@ export function BlindTestPage() {
 
   const enabledCount = project.candidates.filter((c) => c.enabled).length
 
-  const pool = useCoverPool(sim.platform, sim.useRealPool, sim.distractorCategory)
+  const pool = useCoverPool(
+        sim.platform,
+        sim.useRealPool && sim.competitionEnvironment !== 'competitors',
+        sim.competitionEnvironment === 'minecraft' ? 'minecraft' : 'site',
+      )
   const options: FeedOptions = useMemo(
     () => ({
       platform: sim.platform,
       mockCount: sim.mockCount,
       randomizeFeedOrder: sim.randomizeFeedOrder,
       randomizeMetadata: sim.randomizeMetadata,
-      category: sim.distractorCategory,
+      category: sim.competitionEnvironment,
       poolVideos: pool ?? undefined,
     }),
     [sim.platform, sim.mockCount, sim.randomizeFeedOrder, sim.randomizeMetadata, pool],
@@ -169,11 +174,26 @@ export function BlindTestPage() {
               然后你需要回答:<span className="text-zinc-200">「刚才第一眼最想点击哪个视频?」</span>
               目标视频不会以任何方式被标记,和干扰视频长得完全一样。
             </p>
-            <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-zinc-500 md:grid-cols-4">
-              <Stat label="环境" value={`${sim.platform === 'youtube' ? 'YouTube' : 'Bilibili'} ${sim.device === 'desktop' ? '桌面' : '手机'}`} />
-              <Stat label="Viewport" value={`${sim.viewportWidth}×${sim.viewportHeight}`} />
-              <Stat label="展示时长" value={blindDuration === 0 ? '不限' : `${blindDuration}s`} />
-              <Stat label="轮数" value={`${rounds} 轮`} />
+            <div className="mt-4">
+              <ExperimentSummary
+                platform={sim.platform}
+                device={sim.device}
+                environment={sim.competitionEnvironment}
+                environmentLabel={environmentLabel(
+                  sim.competitionEnvironment,
+                  sim.useRealPool,
+                  project.mockVideos.filter((m) => m.enabled).length,
+                )}
+                candidateCount={pickCandidatesForTest(project, {
+                  candidateScope: project.testSettings.candidateScope,
+                  singleCandidateId: project.testSettings.singleCandidateId,
+                }).length}
+                rounds={rounds}
+                blindDuration={blindDuration}
+                lockEnvironment={project.testSettings.lockCompetitionEnvironment}
+                useFixedSeed={sim.useFixedSeed}
+                seed={sim.seed}
+              />
             </div>
             <div className="mt-5 flex items-center gap-3">
               <Button variant="primary" onClick={start} disabled={enabledCount === 0}>

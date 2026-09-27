@@ -88,13 +88,20 @@ export function buildRoundPlans(cfg: PlanConfig): RoundPlan[] {
     fixedPosition: cfg.settings.fixedPosition,
   })
   const plans: RoundPlan[] = []
+  // 锁定竞争环境: 所有轮次共用同一环境种子 → 同一批干扰视频 + 相同顺序,
+  // 候选与位置仍按 Balanced Scheduler 轮换, 保证不同方案面对同一组竞争视频。
+  const lockEnvironment = cfg.settings.lockCompetitionEnvironment === true
   for (let i = 0; i < cfg.rounds; i++) {
     const draw = scheduler.next()
     plans.push({
       round: i + 1,
       candidateId: draw.candidateId,
       position: draw.position,
-      seed: cfg.settings.useFixedSeed ? `${baseSeed}#round${i + 1}` : randomSeed(),
+      seed: lockEnvironment
+        ? `${baseSeed}#locked-env`
+        : cfg.settings.useFixedSeed
+          ? `${baseSeed}#round${i + 1}`
+          : randomSeed(),
     })
   }
   return plans

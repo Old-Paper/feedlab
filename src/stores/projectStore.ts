@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Project, TestSettings } from '../types'
+import { normalizeProject } from '../types'
 import { projectRepository } from '../db/repositories/projectRepository'
 import { randomSeed } from '../features/testing/randomEngine'
 import { toast } from './toastStore'
@@ -20,7 +21,8 @@ export function defaultTestSettings(): TestSettings {
     useFixedSeed: false,
     seed: randomSeed(),
     useRealPool: false,
-    distractorCategory: 'normal',
+    competitionEnvironment: 'site',
+    lockCompetitionEnvironment: false,
     blindDuration: 5,
     rounds: 10,
     candidateScope: 'all',
@@ -113,11 +115,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     flushPersist()
     set({ loading: true, error: null })
     try {
-      const p = await projectRepository.get(id)
-      if (!p) {
+      const raw = await projectRepository.get(id)
+      if (!raw) {
         set({ project: null, loading: false, error: '项目不存在或已被删除' })
       } else {
-        set({ project: p, loading: false })
+        // 旧数据补齐新字段(竞争环境等), 保证旧项目可打开
+        set({ project: normalizeProject(raw), loading: false })
       }
     } catch (e) {
       set({ loading: false, error: `读取项目失败:${e instanceof Error ? e.message : String(e)}` })

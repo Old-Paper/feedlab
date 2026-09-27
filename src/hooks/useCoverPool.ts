@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { DistractorCategory, MockVideo, Platform } from '../types'
+import type { CompetitionEnvironment, MockVideo, Platform } from '../types'
 
 // 每日真实封面池 —— 由 GitHub Actions 每天定时运行 scripts/fetch-covers.mjs 生成一次,
 // 静态托管在 /data/coverPool.json;当天所有访客使用同一份数据,次日由定时任务覆盖。
@@ -45,7 +45,7 @@ async function loadCoverPoolFile(): Promise<CoverPoolFile | null> {
   return await inflight
 }
 
-export function poolToMockVideos(platform: Platform, file: CoverPoolFile, category: DistractorCategory = 'normal'): MockVideo[] {
+export function poolToMockVideos(platform: Platform, file: CoverPoolFile, category: CompetitionEnvironment = 'site'): MockVideo[] {
   const bucket = platform === 'youtube' ? file.youtube : file.bilibili
   const list =
     category === 'minecraft'
@@ -70,7 +70,7 @@ export function poolToMockVideos(platform: Platform, file: CoverPoolFile, catego
  * 加载当前平台的真实封面池。enabled=false 或文件缺失/对应平台为空时返回 null,
  * 生成器会自动回退到内置干扰视频库。
  */
-export function useCoverPool(platform: Platform, enabled: boolean, category: DistractorCategory = 'normal'): MockVideo[] | null {
+export function useCoverPool(platform: Platform, enabled: boolean, category: CompetitionEnvironment = 'site'): MockVideo[] | null {
   const [pool, setPool] = useState<MockVideo[] | null>(null)
 
   useEffect(() => {

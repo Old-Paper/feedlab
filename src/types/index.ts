@@ -11,8 +11,14 @@ export type PlatformEnv = 'youtube-desktop' | 'youtube-mobile' | 'bilibili-deskt
 export type TestMode = 'blind' | 'find'
 export type PositionMode = 'random' | 'fixed'
 export type MetadataMode = 'fixed' | 'random'
-/** 干扰视频分区: 普通全站生态 / 我的世界(MC 区封面竞争) */
-export type DistractorCategory = 'normal' | 'minecraft'
+/**
+ * 竞争环境: 干扰视频来自哪一类竞争池。
+ * - site: 全站生态(内置干扰库或每日真实热门池)
+ * - minecraft: Minecraft 分区
+ * - competitors: 我的竞品库(用户自己导入的竞品视频)
+ * 未来可扩展更多关键词分区(gaming 等), 本次不实现。
+ */
+export type CompetitionEnvironment = 'site' | 'minecraft' | 'competitors'
 /** Seconds a feed stays visible during a blind test. 0 = unlimited. */
 export type BlindDuration = 3 | 5 | 10 | 0
 
@@ -136,7 +142,10 @@ export interface TestSettings {
   seed: string
   /** 干扰视频使用每日抓取的真实封面池(按平台),而不是内置程序生成视频。 */
   useRealPool: boolean
-  distractorCategory: DistractorCategory
+  /** 竞争环境: 全站 / Minecraft / 我的竞品库 */
+  competitionEnvironment: CompetitionEnvironment
+  /** 锁定竞争环境: 同一轮测试的所有方案面对同一组干扰视频, 降低环境噪声 */
+  lockCompetitionEnvironment: boolean
   blindDuration: BlindDuration
   rounds: number
   candidateScope: 'all' | 'single'
@@ -155,6 +164,10 @@ export interface MockVideo {
   thumbAssetId?: string
   /** Direct image URL (每日真实封面池的封面热链平台 CDN). */
   thumbSrcUrl?: string
+  /** 所属平台; 缺省表示不限平台(竞品库中始终可用) */
+  platform?: Platform
+  /** 竞品库内的展示顺序 */
+  order?: number
   custom: boolean
   enabled: boolean
 }
@@ -250,4 +263,25 @@ export interface StoredAsset {
   size: number
   createdAt: number
   blob: Blob
+}
+
+
+// ---------------------------------------------------------------------------
+// 旧数据兼容: 补齐新增字段, 不破坏已有 IndexedDB / project.json 数据
+// ---------------------------------------------------------------------------
+
+/** 补齐 TestSettings 新增字段; 旧 distractorCategory 迁移为 competitionEnvironment。 */
+export function normalizeTestSettings(s: TestSettings): TestSettings {
+  const legacy = (s as { distractorCategory?: 'normal' | 'minecraft' }).distractorCategory
+  const env = (s as { competitionEnvironment?: CompetitionEnvironment }).competitionEnvironment
+  return {
+    ...s,
+    competitionEnvironment: env ?? (legacy === 'minecraft' ? 'minecraft' : 'site'),
+    lockCompetitionEnvironment: (s as { lockCompetitionEnvironment?: boolean }).lockCompetitionEnvironment ?? false,
+  }
+}
+
+/** 读取存储中的项目时补齐新字段, 保证旧数据可打开。 */
+export function normalizeProject(p: Project): Project {
+  return { ...p, testSettings: normalizeTestSettings(p.testSettings) }
 }

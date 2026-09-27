@@ -60,7 +60,11 @@ export function SimulatorPage() {
   const candidate = candidateById(project, sim.candidateId)
   const totalSlots = sim.mockCount + (candidate ? 1 : 0)
   const position = resolvePreviewPosition(sim, totalSlots, sim.seed, derivePosition)
-  const pool = useCoverPool(sim.platform, sim.useRealPool, sim.distractorCategory)
+  const pool = useCoverPool(
+        sim.platform,
+        sim.useRealPool && sim.competitionEnvironment !== 'competitors',
+        sim.competitionEnvironment === 'minecraft' ? 'minecraft' : 'site',
+      )
 
   const feed = useMemo(
     () =>
@@ -71,7 +75,7 @@ export function SimulatorPage() {
           mockCount: sim.mockCount,
           randomizeFeedOrder: sim.randomizeFeedOrder,
           randomizeMetadata: sim.randomizeMetadata,
-          category: sim.distractorCategory,
+          category: sim.competitionEnvironment,
           poolVideos: pool ?? undefined,
         },
         candidate,

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type {
   BlindDuration,
   Candidate,
-  DistractorCategory,
+  CompetitionEnvironment,
   Platform,
   PositionMode,
   Project,
@@ -29,7 +29,8 @@ export interface SimulationState {
   useFixedSeed: boolean
   seed: string
   useRealPool: boolean
-  distractorCategory: DistractorCategory
+  /** 竞争环境: 全站 / Minecraft / 我的竞品库 */
+  competitionEnvironment: CompetitionEnvironment
   inspectEnabled: boolean
   candidateId: string | null
   ytMobileStyle: 'standard' | 'experimental'
@@ -63,7 +64,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   useFixedSeed: false,
   seed: randomSeed(),
   useRealPool: false,
-  distractorCategory: 'normal',
+  competitionEnvironment: 'site',
   inspectEnabled: false,
   candidateId: null,
   ytMobileStyle: 'standard',
@@ -98,7 +99,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         useFixedSeed: s.useFixedSeed,
         seed: s.seed || randomSeed(),
         useRealPool: s.useRealPool,
-        distractorCategory: s.distractorCategory,
+        competitionEnvironment: s.competitionEnvironment,
         blindDuration: s.blindDuration,
         rounds: s.rounds,
         candidateScope: s.candidateScope,

@@ -1,6 +1,6 @@
 import { Dices, ExternalLink, Eye, Moon, Shuffle, Sun } from 'lucide-react'
 import { useState } from 'react'
-import { DESKTOP_VIEWPORTS, MOBILE_VIEWPORTS, type DistractorCategory, type Device, type Platform, type Project, type ThemeMode } from '../types'
+import { DESKTOP_VIEWPORTS, MOBILE_VIEWPORTS, type CompetitionEnvironment, type Device, type Platform, type Project, type ThemeMode } from '../types'
 import { Button, Segmented, Select, NumberInput, Checkbox, TextInput, IconButton } from './ui'
 import type { SimulationState } from '../stores/simulationStore'
 
@@ -16,7 +16,7 @@ type SimSlice = Pick<
   | 'useFixedSeed'
   | 'seed'
   | 'useRealPool'
-  | 'distractorCategory'
+  | 'competitionEnvironment'
   | 'inspectEnabled'
   | 'candidateId'
 >
@@ -183,12 +183,13 @@ export function TestSetupBar({
           ))}
         </Select>
       ) : null}
-      <Segmented<DistractorCategory>
-        value={sim.distractorCategory}
-        onChange={(v) => patch({ distractorCategory: v })}
+      <Segmented<CompetitionEnvironment>
+        value={sim.competitionEnvironment}
+        onChange={(v) => patch({ competitionEnvironment: v })}
         options={[
-          { value: 'normal', label: '普通分区' },
-          { value: 'minecraft', label: '我的世界' },
+          { value: 'site', label: '全站' },
+          { value: 'minecraft', label: 'Minecraft' },
+          { value: 'competitors', label: '我的竞品库' },
         ]}
       />
       <Checkbox

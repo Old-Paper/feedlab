@@ -3,7 +3,7 @@ import { useProjectStore } from '../../stores/projectStore'
 import { Button, Checkbox, Field, NumberInput, SectionCard, Segmented, Select, TextInput, IconButton } from '../../components/ui'
 import { MockCountPicker, ViewportPicker } from '../../components/TestSetupBar'
 import { randomSeed } from '../../features/testing/randomEngine'
-import type { BlindDuration, Device, DistractorCategory, Platform, PositionMode, Project, ThemeMode } from '../../types'
+import type { BlindDuration, CompetitionEnvironment, Device, Platform, PositionMode, Project, ThemeMode } from '../../types'
 
 const ROUND_OPTIONS = [1, 5, 10, 20, 50]
 
@@ -90,17 +90,32 @@ export function TestSettingsTab() {
               checked={s.useRealPool}
               onChange={(v) => set({ useRealPool: v })}
             />
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-zinc-500">分区</span>
-              <Segmented<DistractorCategory>
-                value={s.distractorCategory}
-                onChange={(v) => set({ distractorCategory: v })}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-zinc-500">竞争环境</span>
+              <Segmented<CompetitionEnvironment>
+                value={s.competitionEnvironment}
+                onChange={(v) => set({ competitionEnvironment: v })}
                 options={[
-                  { value: 'normal', label: '普通' },
-                  { value: 'minecraft', label: '我的世界' },
+                  { value: 'site', label: '全站' },
+                  { value: 'minecraft', label: 'Minecraft' },
+                  { value: 'competitors', label: '我的竞品库' },
                 ]}
               />
+              {s.competitionEnvironment === 'competitors' ? (
+                <span className="text-[11px] text-zinc-500">
+                  竞品库现有 {project.mockVideos.filter((m) => m.enabled).length} 条启用视频
+                </span>
+              ) : null}
             </div>
+            <Checkbox
+              label={
+                <span title="开启后, 同一轮测试的所有方案面对同一组干扰视频, 使不同方案的比较更公平">
+                  锁定竞争环境（各方案面对同一组干扰视频）
+                </span>
+              }
+              checked={s.lockCompetitionEnvironment}
+              onChange={(v) => set({ lockCompetitionEnvironment: v })}
+            />
           </div>
         </div>
       </SectionCard>

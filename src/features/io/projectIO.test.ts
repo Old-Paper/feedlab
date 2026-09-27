@@ -101,7 +101,8 @@ function makeProject(): Project {
       useFixedSeed: true,
       seed: 'roundtrip-seed',
       useRealPool: true,
-      distractorCategory: 'minecraft',
+      competitionEnvironment: 'minecraft',
+      lockCompetitionEnvironment: false,
       blindDuration: 10,
       rounds: 20,
       candidateScope: 'single',
@@ -193,7 +194,7 @@ describe('projectIO — Export → Import round-trip', () => {
     // 平台配置一致
     expect(imported!.testSettings).toEqual(original!.testSettings)
     expect(imported!.testSettings.platform).toBe('bilibili')
-    expect(imported!.testSettings.distractorCategory).toBe('minecraft')
+    expect(imported!.testSettings.competitionEnvironment).toBe('minecraft')
 
     // metadata 一致
     expect(imported!.candidates[0].metadata).toEqual(original!.candidates[0].metadata)

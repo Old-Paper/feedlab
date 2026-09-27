@@ -5,6 +5,9 @@ import { sessionRepository } from '../db/repositories/sessionRepository'
 import { applyFilter, computeBlindMetrics, computeFindMetrics, envLabel, NO_FILTER, type BlindTestMetric, type FindTargetMetric, type SessionFilter } from '../features/testing/metrics'
 import { formatCI, formatPercent, intervalsOverlap, sampleSizeHint, wilsonInterval } from '../features/testing/statistics'
 import { Button, Badge, ConfirmModal, EmptyState, Segmented, SectionCard, Checkbox } from '../components/ui'
+import { ExperimentSummary, environmentLabel } from '../components/ExperimentSummary'
+import { PositionBiasCard } from '../components/PositionBiasCard'
+import { downloadCsv, sessionsToCsv } from '../features/testing/csvExport'
 import { formatDate, formatSeconds, truncate } from '../lib/format'
 import type { Device, Platform, TestMode, TestSession } from '../types'
 
@@ -106,7 +109,7 @@ export function ResultsPage() {
               <BarChart3 size={18} /> 测试结果
             </h1>
             <p className="mt-0.5 text-xs text-zinc-500">
-              共 {sessions.length} 条记录 · 盲测与找目标指标分开统计 · 不同平台/设备请分开查看
+              模拟信息流实验结果, 用于比较不同包装方案的相对表现 · 共 {sessions.length} 条记录
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -131,6 +134,21 @@ export function ResultsPage() {
               }}
               options={ENV_OPTIONS.map((o) => ({ value: `${o.value}-${o.device}`, label: o.label }))}
             />
+            <Button
+              size="sm"
+              variant="subtle"
+              disabled={filtered.length === 0}
+              onClick={() => {
+                const csv = sessionsToCsv({
+                  sessions: filtered,
+                  candidateName,
+                  competitionEnvironment: project.testSettings.competitionEnvironment,
+                })
+                downloadCsv(`feedlab-results-${new Date().toISOString().slice(0, 10)}.csv`, csv)
+              }}
+            >
+              导出 CSV
+            </Button>
             <Button size="sm" variant="subtle" onClick={() => setClearOpen(true)}>
               <Trash2 size={13} /> 清空记录
             </Button>
@@ -145,6 +163,24 @@ export function ResultsPage() {
           />
         ) : (
           <div className="space-y-4">
+            <ExperimentSummary
+              variant="compact"
+              platform={project.testSettings.platform}
+              device={project.testSettings.device}
+              environment={project.testSettings.competitionEnvironment}
+              environmentLabel={environmentLabel(
+                project.testSettings.competitionEnvironment,
+                project.testSettings.useRealPool,
+                project.mockVideos.filter((m) => m.enabled).length,
+              )}
+              candidateCount={project.candidates.filter((c) => c.enabled).length}
+              rounds={project.testSettings.rounds}
+              blindDuration={project.testSettings.blindDuration}
+              lockEnvironment={project.testSettings.lockCompetitionEnvironment}
+              useFixedSeed={project.testSettings.useFixedSeed}
+              seed={project.testSettings.seed}
+            />
+
             <SectionCard
               title={`盲测 · 第一眼选择表现（${blindMetrics.length} 个组合）`}
               hint="第一眼选择率 = 盲测中被选为第一选择的比例，不代表平台后台真实 CTR"
@@ -240,6 +276,8 @@ export function ResultsPage() {
                 </div>
               )}
             </SectionCard>
+
+            <PositionBiasCard sessions={filtered} candidateName={candidateName} />
 
             <SectionCard
               title="Candidate 对比"

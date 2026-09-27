@@ -7,6 +7,7 @@ import { useCoverPool } from '../hooks/useCoverPool'
 import { DeviceViewport } from '../components/DeviceViewport'
 import { FeedRenderer } from '../platforms'
 import { TestSetupBar } from '../components/TestSetupBar'
+import { ExperimentSummary, environmentLabel } from '../components/ExperimentSummary'
 import { Button, Segmented } from '../components/ui'
 import type { ABLayout } from '../stores/simulationStore'
 import { clsx } from 'clsx'
@@ -25,14 +26,18 @@ export function ABComparePage() {
   const candidateA = candidateById(project, sim.abCandidateA)
   const candidateB = candidateById(project, sim.abCandidateB)
 
-  const pool = useCoverPool(sim.platform, sim.useRealPool, sim.distractorCategory)
+  const pool = useCoverPool(
+        sim.platform,
+        sim.useRealPool && sim.competitionEnvironment !== 'competitors',
+        sim.competitionEnvironment === 'minecraft' ? 'minecraft' : 'site',
+      )
   const options = useMemo(
     () => ({
       platform: sim.platform,
       mockCount: sim.mockCount,
       randomizeFeedOrder: sim.randomizeFeedOrder,
       randomizeMetadata: false, // A/B must differ only by cover+title
-      category: sim.distractorCategory,
+      category: sim.competitionEnvironment,
       poolVideos: pool ?? undefined,
     }),
     [sim.platform, sim.mockCount, sim.randomizeFeedOrder, pool],
@@ -163,6 +168,25 @@ export function ABComparePage() {
             <Shuffle size={13} /> Shuffle(两图同步换环境)
           </Button>
         </div>
+      </div>
+
+      <div className="border-b border-[#1e2027] bg-[#0e1015] px-4 py-2">
+        <ExperimentSummary
+          variant="compact"
+          platform={sim.platform}
+          device={sim.device}
+          environment={sim.competitionEnvironment}
+          environmentLabel={environmentLabel(
+            sim.competitionEnvironment,
+            sim.useRealPool,
+            project.mockVideos.filter((m) => m.enabled).length,
+          )}
+          candidateCount={2}
+          rounds={1}
+          blindDuration={project.testSettings.blindDuration}
+          lockEnvironment={project.testSettings.lockCompetitionEnvironment}
+          useFixedSeed={sim.useFixedSeed}
+        />
       </div>
 
       <div

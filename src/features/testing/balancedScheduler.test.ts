@@ -19,7 +19,8 @@ function makeSettings(partial: Partial<TestSettings>): TestSettings {
     useFixedSeed: true,
     seed: 'scheduler-test-seed',
     useRealPool: false,
-    distractorCategory: 'normal',
+    competitionEnvironment: 'site',
+    lockCompetitionEnvironment: false,
     blindDuration: 5,
     rounds: 10,
     candidateScope: 'all',
@@ -124,5 +125,56 @@ describe('buildRoundPlans — 可复现性', () => {
       rounds: 9,
     })
     for (const plan of plans) expect(plan.candidateId).toBe('c2')
+  })
+})
+
+
+describe('buildRoundPlans — 锁定竞争环境', () => {
+  const base = {
+    platform: 'youtube' as const,
+    enabledCandidateIds: ['c1', 'c2', 'c3'],
+    mockCount: 12,
+    rounds: 9,
+  }
+
+  function tally(values: string[]): Map<string, number> {
+    const map = new Map<string, number>()
+    for (const v of values) map.set(v, (map.get(v) ?? 0) + 1)
+    return map
+  }
+
+  it('锁定后所有轮次使用同一环境种子 (无论是否固定 Seed)', () => {
+    for (const useFixedSeed of [true, false]) {
+      const plans = buildRoundPlans({
+        ...base,
+        settings: makeSettings({ seed: 'lock-seed', lockCompetitionEnvironment: true, useFixedSeed }),
+      })
+      const seeds = new Set(plans.map((p) => p.seed))
+      expect(seeds.size).toBe(1)
+      expect(plans[0].seed).toContain('locked-env')
+    }
+  })
+
+  it('锁定后候选与位置仍按 Balanced Scheduler 均衡轮换', () => {
+    const plans = buildRoundPlans({
+      ...base,
+      settings: makeSettings({ seed: 'lock-balance', lockCompetitionEnvironment: true }),
+    })
+    const candCounts = tally(plans.map((p) => p.candidateId as string))
+    const candValues = [...candCounts.values()]
+    expect(Math.max(...candValues) - Math.min(...candValues)).toBeLessThanOrEqual(1)
+
+    const posCounts = tally(plans.map((p) => String(p.position)))
+    const posValues = [...posCounts.values()]
+    expect(Math.max(...posValues) - Math.min(...posValues)).toBeLessThanOrEqual(1)
+  })
+
+  it('未锁定且未固定 Seed 时, 各轮种子互不相同', () => {
+    const plans = buildRoundPlans({
+      ...base,
+      settings: makeSettings({ seed: 'unlocked', lockCompetitionEnvironment: false, useFixedSeed: false }),
+    })
+    const seeds = new Set(plans.map((p) => p.seed))
+    expect(seeds.size).toBe(9)
   })
 })

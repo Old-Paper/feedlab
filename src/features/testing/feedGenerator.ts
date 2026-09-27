@@ -1,6 +1,6 @@
 import type {
   Candidate,
-  DistractorCategory,
+  CompetitionEnvironment,
   FeedVideo,
   GeneratedFeed,
   MockVideo,
@@ -17,8 +17,8 @@ export interface FeedOptions {
   mockCount: number
   randomizeFeedOrder: boolean
   randomizeMetadata: boolean
-  /** 干扰视频分区: 普通 / 我的世界 */
-  category?: DistractorCategory
+  /** 竞争环境: 全站 / Minecraft / 我的竞品库 */
+  category?: CompetitionEnvironment
   /**
    * 每日真实封面池(按平台)。提供且数量足够时,替代内置干扰视频 ——
    * 覆盖"最火 + 不太火"两组真实视频,由 fetch-covers 每日更新一次。
@@ -38,7 +38,16 @@ export interface FeedRequest {
   position?: number | null
 }
 
-export function collectMockPool(project: Project, poolVideos?: MockVideo[], category: DistractorCategory = 'normal'): MockVideo[] {
+export function collectMockPool(
+  project: Project,
+  poolVideos: MockVideo[] | undefined,
+  category: CompetitionEnvironment = 'site',
+  platform: Platform = 'youtube',
+): MockVideo[] {
+  // 我的竞品库: 干扰视频完全来自用户自己导入的竞品(启用且平台匹配)
+  if (category === 'competitors') {
+    return project.mockVideos.filter((m) => m.enabled && (!m.platform || m.platform === platform))
+  }
   if (poolVideos && poolVideos.length >= 4) return poolVideos
   if (category === 'minecraft') return BUILTIN_MC_MOCK_VIDEOS
   const disabled = new Set(project.disabledBuiltinMockIds)
@@ -150,7 +159,7 @@ export function derivePosition(seed: string, totalSlots: number): number {
 
 export function generateFeed(req: FeedRequest): GeneratedFeed {
   const { project, options, seed } = req
-  const pool = collectMockPool(project, options.poolVideos, options.category).slice().sort((a, b) => (a.id < b.id ? -1 : 1))
+  const pool = collectMockPool(project, options.poolVideos, options.category ?? 'site', options.platform).slice().sort((a, b) => (a.id < b.id ? -1 : 1))
 
   const rng = new RandomEngine(seed)
   const wanted = Math.max(0, Math.round(options.mockCount))
