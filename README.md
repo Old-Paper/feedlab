@@ -59,6 +59,9 @@ src/
   一次,当天所有访客使用同一份数据**。在模拟器/盲测/找目标/A-B 工具栏勾选「真实封面池」
   后,干扰视频自动替换为当前所选平台的真实视频池;封面直接热链平台 CDN(`no-referrer`)。
   本地手动刷新:`node scripts/fetch-covers.mjs`。
+- **分区模式**:工具栏可切换「普通分区 / 我的世界」。MC 模式下干扰视频换成 MC 区
+  竞争环境 —— 真实池按平台抓取 MC 视频(B站走 wbi 签名搜索;油管走关键词搜索 +
+  Piped 兜底),真实池缺失时回退到内置 24 条像素方块风 MC 干扰集(程序生成封面)。
 - **Seeded Random**:cyrb128 哈希种子 + sfc32 PRNG。相同 Seed + 相同配置 = 完全相同的
   Feed 顺序、Candidate 位置、元数据抖动。A/B 对比中两图共享同一 Seed,唯一变量是 Candidate。
 - **Balanced Scheduler**:shuffled-bag 轮换。每个 Candidate(以及随机位置)在一袋内恰好出现
