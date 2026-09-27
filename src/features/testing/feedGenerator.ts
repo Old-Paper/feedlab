@@ -137,6 +137,7 @@ function toMockFeedVideo(mv: MockVideo, index: number, rng: RandomEngine, random
     channel: mv.channel,
     thumbAssetId: mv.thumbAssetId,
     thumbSrc: mv.thumbAssetId ? undefined : (mv.thumbSrcUrl ?? mockInlineThumb(mv)),
+    avatarSrc: mv.avatarSrcUrl,
     avatarName: mv.channel,
     views,
     danmaku,

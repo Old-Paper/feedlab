@@ -34,10 +34,23 @@ export function ThumbImage({ video, env, className }: { video: FeedVideo; env: P
   )
 }
 
-export function FeedAvatar({ name, assetId, size }: { name: string; assetId?: string; size: number }) {
+export function FeedAvatar({ name, assetId, src, size }: { name: string; assetId?: string; src?: string; size: number }) {
   const url = useAssetUrl(assetId)
-  if (url) {
-    return <img src={url} alt="" draggable={false} className="rounded-full object-cover" style={{ width: size, height: size }} />
+  const rawSrc = url ?? src
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [rawSrc])
+  if (rawSrc && !failed) {
+    return (
+      <img
+        src={rawSrc}
+        alt=""
+        draggable={false}
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        className="shrink-0 rounded-full object-cover"
+        style={{ width: size, height: size }}
+      />
+    )
   }
   return (
     <div

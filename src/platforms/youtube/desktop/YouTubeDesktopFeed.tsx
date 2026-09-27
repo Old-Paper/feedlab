@@ -40,7 +40,7 @@ function YouTubeVideoCard({ video, t, clickable, onSelect }: { video: FeedVideo;
         </span>
       </div>
       <div className="mt-3 flex gap-3">
-        <FeedAvatar name={video.avatarName} assetId={video.avatarAssetId} size={P.avatarSize} />
+        <FeedAvatar name={video.avatarName} assetId={video.avatarAssetId} src={video.avatarSrc} size={P.avatarSize} />
         <div className="min-w-0 flex-1">
           <div
             data-inspect="title"

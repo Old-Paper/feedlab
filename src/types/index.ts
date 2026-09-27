@@ -164,6 +164,8 @@ export interface MockVideo {
   thumbAssetId?: string
   /** Direct image URL (每日真实封面池的封面热链平台 CDN). */
   thumbSrcUrl?: string
+  /** Direct channel avatar URL from the same daily pool entry. */
+  avatarSrcUrl?: string
   /** 所属平台; 缺省表示不限平台(竞品库中始终可用) */
   platform?: Platform
   /** 竞品库内的展示顺序 */
@@ -203,6 +205,8 @@ export interface FeedVideo {
   sourceWidth?: number
   sourceHeight?: number
   avatarAssetId?: string
+  /** Remote avatar source used by daily real-video pool entries. */
+  avatarSrc?: string
   avatarName: string
   views: number
   danmaku?: number

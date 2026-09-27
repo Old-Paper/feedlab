@@ -14,6 +14,7 @@ export interface PoolEntry {
   durationSec: number
   publishedHoursAgo: number
   pic: string
+  avatar?: string
 }
 
 interface CoverPoolFile {
@@ -61,6 +62,7 @@ export function poolToMockVideos(platform: Platform, file: CoverPoolFile, catego
     durationSec: e.durationSec || 300,
     publishedHoursAgo: e.publishedHoursAgo || 48,
     thumbSrcUrl: e.pic,
+    avatarSrcUrl: e.avatar,
     custom: true,
     enabled: true,
   }))

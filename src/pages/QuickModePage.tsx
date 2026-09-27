@@ -22,6 +22,7 @@ import type { Device, FeedVideo, Platform, ThemeMode } from '../types'
 const LS_TITLE = 'quick.title'
 const LS_CHANNEL = 'quick.channel'
 const LS_ASSET = 'quick.assetId'
+const LS_AVATAR = 'quick.avatarAssetId'
 const QUICK_PROJECT = '__quick__'
 
 function makeEmptyThumb(): string {
@@ -45,6 +46,7 @@ function toFeedVideo(mv: MockVideo, key: string): FeedVideo {
     channel: mv.channel,
     thumbAssetId: mv.thumbAssetId,
     thumbSrc: mv.thumbAssetId ? undefined : (mv.thumbSrcUrl ?? (mv.custom ? generateMockThumbDataUrl(`custom:${mv.id}`, mv.title) : builtinMockThumb(mv.id, mv.title))),
+    avatarSrc: mv.avatarSrcUrl,
     avatarName: mv.channel,
     views: mv.views,
     danmaku: mv.danmaku,
@@ -62,6 +64,7 @@ export function QuickModePage() {
   const [title, setTitle] = useState(() => localStorage.getItem(LS_TITLE) ?? '')
   const [channel, setChannel] = useState(() => localStorage.getItem(LS_CHANNEL) ?? '我的频道')
   const [assetId, setAssetId] = useState(() => localStorage.getItem(LS_ASSET))
+  const [avatarAssetId, setAvatarAssetId] = useState(() => localStorage.getItem(LS_AVATAR))
   const [editorOpen, setEditorOpen] = useState(false)
 
   const [phase, setPhase] = useState<Phase>('edit')
@@ -79,6 +82,7 @@ export function QuickModePage() {
 
   const pool = useCoverPool(platform, true)
   const assetUrl = useAssetUrl(assetId)
+  const avatarUrl = useAssetUrl(avatarAssetId)
 
   const viewport = device === 'desktop' ? { w: 1600, h: 900 } : { w: 390, h: 844 }
 
@@ -100,6 +104,7 @@ export function QuickModePage() {
       channel: channel || '我的频道',
       thumbAssetId: assetId ?? undefined,
       thumbSrc: assetId ? undefined : makeEmptyThumb(),
+      avatarAssetId: avatarAssetId ?? undefined,
       avatarName: channel || '我的频道',
       views: 128000,
       danmaku: platform === 'bilibili' ? 2100 : undefined,
@@ -114,7 +119,7 @@ export function QuickModePage() {
       else items.push(toFeedVideo(mocks[cursor++], `${cursor}-${seed}`))
     }
     return { items, position: pos }
-  }, [pool, seed, title, channel, assetId, platform, position])
+  }, [pool, seed, title, channel, assetId, avatarAssetId, platform, position])
 
   // 倒计时结束 → 展示计时
   useEffect(() => {
@@ -356,15 +361,20 @@ export function QuickModePage() {
         channel={channel}
         assetId={assetId}
         assetUrl={assetUrl}
+        avatarAssetId={avatarAssetId}
+        avatarUrl={avatarUrl}
         onClose={() => setEditorOpen(false)}
-        onSave={(t, c, a) => {
+        onSave={(t, c, a, avatar) => {
           setTitle(t)
           setChannel(c)
           setAssetId(a)
+          setAvatarAssetId(avatar)
           localStorage.setItem(LS_TITLE, t)
           localStorage.setItem(LS_CHANNEL, c)
           if (a) localStorage.setItem(LS_ASSET, a)
           else localStorage.removeItem(LS_ASSET)
+          if (avatar) localStorage.setItem(LS_AVATAR, avatar)
+          else localStorage.removeItem(LS_AVATAR)
           setEditorOpen(false)
           toast.success('已保存,点击右上角「开始测试」')
         }}
@@ -379,6 +389,8 @@ function QuickEditorModal({
   channel,
   assetId,
   assetUrl,
+  avatarAssetId,
+  avatarUrl,
   onClose,
   onSave,
 }: {
@@ -387,15 +399,20 @@ function QuickEditorModal({
   channel: string
   assetId: string | null
   assetUrl: string | null
+  avatarAssetId: string | null
+  avatarUrl: string | null
   onClose: () => void
-  onSave: (title: string, channel: string, assetId: string | null) => void
+  onSave: (title: string, channel: string, assetId: string | null, avatarAssetId: string | null) => void
 }) {
   const [draftTitle, setDraftTitle] = useState(title)
   const [draftChannel, setDraftChannel] = useState(channel)
   const [draftAsset, setDraftAsset] = useState<string | null>(assetId)
   const [previewUrl, setPreviewUrl] = useState<string | null>(assetUrl)
+  const [draftAvatar, setDraftAvatar] = useState<string | null>(avatarAssetId)
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(avatarUrl)
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const avatarFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open) {
@@ -403,8 +420,10 @@ function QuickEditorModal({
       setDraftChannel(channel)
       setDraftAsset(assetId)
       setPreviewUrl(assetUrl)
+      setDraftAvatar(avatarAssetId)
+      setAvatarPreviewUrl(avatarUrl)
     }
-  }, [open, title, channel, assetId, assetUrl])
+  }, [open, title, channel, assetId, assetUrl, avatarAssetId, avatarUrl])
 
   const pickFile = async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -423,6 +442,23 @@ function QuickEditorModal({
     }
   }
 
+  const pickAvatar = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    try {
+      setSaving(true)
+      const asset = await buildStoredAsset(files[0], 'avatar', QUICK_PROJECT)
+      await assetRepository.put(asset)
+      if (draftAvatar) void assetRepository.delete(draftAvatar).catch(() => undefined)
+      setDraftAvatar(asset.id)
+      setAvatarPreviewUrl(URL.createObjectURL(asset.blob))
+    } catch (e) {
+      toast.error(errorMessage(e))
+    } finally {
+      setSaving(false)
+      if (avatarFileRef.current) avatarFileRef.current.value = ''
+    }
+  }
+
   return (
     <Modal
       open={open}
@@ -432,7 +468,7 @@ function QuickEditorModal({
       footer={
         <>
           <Button onClick={onClose}>取消</Button>
-          <Button variant="primary" disabled={saving} onClick={() => onSave(draftTitle.trim(), draftChannel.trim() || '我的频道', draftAsset)}>
+          <Button variant="primary" disabled={saving} onClick={() => onSave(draftTitle.trim(), draftChannel.trim() || '我的频道', draftAsset, draftAvatar)}>
             保存
           </Button>
         </>
@@ -458,9 +494,24 @@ function QuickEditorModal({
         <Field label="标题" hint="就是信息流里显示的那行字">
           <TextInput className="w-full" value={draftTitle} maxLength={100} placeholder="例如:我在全是岩浆的世界生存了100天" onChange={(e) => setDraftTitle(e.target.value)} />
         </Field>
-        <Field label="频道名" hint="显示在标题下方">
-          <TextInput className="w-full" value={draftChannel} maxLength={40} onChange={(e) => setDraftChannel(e.target.value)} />
-        </Field>
+        <div className="flex items-end gap-3">
+          <div className="flex shrink-0 flex-col items-center gap-1.5">
+            {avatarPreviewUrl ? (
+              <img src={avatarPreviewUrl} alt="频道头像预览" className="h-12 w-12 rounded-full object-cover ring-1 ring-[#343741]" />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#23252d] text-base font-semibold text-zinc-400 ring-1 ring-[#343741]">
+                {(draftChannel || '频').slice(0, 1)}
+              </div>
+            )}
+            <input ref={avatarFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => void pickAvatar(e.target.files)} />
+            <Button size="sm" onClick={() => avatarFileRef.current?.click()}>
+              {draftAvatar ? '更换头像' : '上传头像'}
+            </Button>
+          </div>
+          <Field className="min-w-0 flex-1" label="频道名" hint="头像和名称会显示在支持频道头像的平台卡片中">
+            <TextInput className="w-full" value={draftChannel} maxLength={40} onChange={(e) => setDraftChannel(e.target.value)} />
+          </Field>
+        </div>
       </div>
     </Modal>
   )

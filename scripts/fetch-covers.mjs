@@ -85,6 +85,17 @@ function parseBiliDuration(text) {
   return 0
 }
 
+function normalizeImageUrl(value) {
+  const url = String(value ?? '')
+  if (url.startsWith('//')) return `https:${url}`
+  return url.replace(/^http:/, 'https:')
+}
+
+function lastImageUrl(items) {
+  if (!Array.isArray(items) || items.length === 0) return ''
+  return normalizeImageUrl(items[items.length - 1]?.url)
+}
+
 function mapBiliSearch(r) {
   const pub = r.pubdate ?? 0
   return {
@@ -95,7 +106,8 @@ function mapBiliSearch(r) {
     danmaku: r.video_review ?? 0,
     durationSec: parseBiliDuration(r.duration),
     publishedHoursAgo: pub ? Math.max(1, Math.round((Date.now() / 1000 - pub) / 3600)) : 48,
-    pic: (r.pic ?? '').replace(/^http:/, 'https:'),
+    pic: normalizeImageUrl(r.pic),
+    avatar: normalizeImageUrl(r.upic ?? r.face),
   }
 }
 
@@ -109,7 +121,8 @@ function mapBili(v, i) {
     danmaku: v.stat?.danmaku ?? 0,
     durationSec: v.duration ?? 0,
     publishedHoursAgo: pub ? Math.max(1, Math.round((Date.now() / 1000 - pub) / 3600)) : 48,
-    pic: (v.pic ?? '').replace(/^http:/, 'https:'),
+    pic: normalizeImageUrl(v.pic),
+    avatar: normalizeImageUrl(v.owner?.face),
   }
 }
 
@@ -244,6 +257,10 @@ function mapYtLockup(vm) {
     .map((b) => b?.thumbnailBadgeViewModel?.text)
     .filter(Boolean)
   const durText = badges.find((t) => /^\d+(:\d+)+$/.test(t))
+  const avatar = lastImageUrl(
+    meta?.image?.decoratedAvatarViewModel?.avatar?.avatarViewModel?.image?.sources ??
+      meta?.image?.avatarViewModel?.image?.sources,
+  )
   return {
     id: `yt-${vm.contentId}`,
     title,
@@ -252,6 +269,7 @@ function mapYtLockup(vm) {
     durationSec: parseDurationEn(durText ?? null) ?? 0,
     publishedHoursAgo: ago ?? 48,
     pic: `https://i.ytimg.com/vi/${vm.contentId}/hq720.jpg`,
+    avatar,
   }
 }
 
@@ -296,6 +314,9 @@ function mapYt(r) {
     r.ownerText?.runs?.[0]?.text ?? r.longBylineText?.runs?.[0]?.text ?? r.shortBylineText?.runs?.[0]?.text ?? ''
   const views =
     parseViewsEn(r.viewCountText?.simpleText) ?? parseViewsEn(r.shortViewCountText?.simpleText) ?? 0
+  const avatar = lastImageUrl(
+    r.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails,
+  )
   return {
     id: `yt-${r.videoId}`,
     title,
@@ -304,6 +325,7 @@ function mapYt(r) {
     durationSec: parseDurationEn(r.lengthText?.simpleText) ?? 0,
     publishedHoursAgo: parseAgoEn(r.publishedTimeText?.simpleText) ?? 48,
     pic: `https://i.ytimg.com/vi/${r.videoId}/hq720.jpg`,
+    avatar,
   }
 }
 
@@ -380,6 +402,7 @@ async function fetchYouTube() {
             durationSec: it.duration ?? 0,
             publishedHoursAgo: it.uploaded ? Math.max(1, Math.round((Date.now() - it.uploaded) / 3600000)) : 48,
             pic: `https://i.ytimg.com/vi/${videoId}/hq720.jpg`,
+            avatar: normalizeImageUrl(it.uploaderAvatar),
           })
         }
       } catch (e) {
@@ -481,6 +504,7 @@ async function fetchYouTube() {
             durationSec: it.duration ?? 0,
             publishedHoursAgo: it.uploaded ? Math.max(1, Math.round((Date.now() - it.uploaded) / 3600000)) : 48,
             pic: `https://i.ytimg.com/vi/${videoId}/hq720.jpg`,
+            avatar: normalizeImageUrl(it.uploaderAvatar),
           })
         }
       } catch (e) {

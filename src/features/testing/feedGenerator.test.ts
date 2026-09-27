@@ -104,6 +104,19 @@ describe('feedGenerator — 候选位置', () => {
     expect(feed.candidateIndex).toBe(3)
   })
 
+  it('Candidate 使用项目频道头像资源', () => {
+    const project = makeProject()
+    project.channel.avatarAssetId = 'asset-avatar'
+    const feed = generateFeed({
+      project,
+      options: { platform: 'youtube', mockCount: 0, randomizeFeedOrder: false, randomizeMetadata: false },
+      candidate: project.candidates[0],
+      seed: 'avatar-seed',
+      position: 0,
+    })
+    expect(feed.items[0].avatarAssetId).toBe('asset-avatar')
+  })
+
   it('Candidate 在整个 Feed 中只出现一次', () => {
     const project = makeProject()
     const feed = generateFeed({
@@ -288,7 +301,7 @@ describe('feedGenerator — 空池与禁用', () => {
   it('MockVideo 池不足 mockCount 时以重复项补齐且 id 唯一', () => {
     const project = makeProject()
     project.mockVideos = [
-      { id: 'custom-1', title: '自定义干扰1', channel: '竞品A', views: 10000, durationSec: 300, publishedHoursAgo: 24, custom: true, enabled: true },
+      { id: 'custom-1', title: '自定义干扰1', channel: '竞品A', views: 10000, durationSec: 300, publishedHoursAgo: 24, avatarSrcUrl: 'https://example.com/avatar.jpg', custom: true, enabled: true },
     ]
     const feed = generateFeed({
       project,
@@ -298,6 +311,7 @@ describe('feedGenerator — 空池与禁用', () => {
       position: 0,
     })
     expect(feed.items).toHaveLength(5)
+    expect(feed.items.find((item) => item.title === '自定义干扰1')?.avatarSrc).toBe('https://example.com/avatar.jpg')
     const ids = new Set(feed.items.map((i) => i.id))
     expect(ids.size).toBe(5)
   })

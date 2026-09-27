@@ -46,7 +46,7 @@ function MobileCard({ video, p, t, clickable, onSelect }: { video: FeedVideo; p:
       </div>
       {/* m.youtube.com 实测结构: 头像与标题同行, 频道行与 播放量·时间行 均与标题左缘对齐 */}
       <div className="flex gap-3" style={{ padding: `10px ${p.paddingX}px 0` }}>
-        <FeedAvatar name={video.avatarName} assetId={video.avatarAssetId} size={p.avatarSize} />
+        <FeedAvatar name={video.avatarName} assetId={video.avatarAssetId} src={video.avatarSrc} size={p.avatarSize} />
         <div className="min-w-0 flex-1">
           <div
             data-inspect="title"
