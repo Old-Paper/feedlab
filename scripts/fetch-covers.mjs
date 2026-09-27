@@ -459,6 +459,36 @@ async function fetchYouTube() {
   } catch (e) {
     console.warn('[yt] minecraft failed:', e.message)
   }
+  // 搜索页偶发返回空内容时的兜底: Piped 公共实例搜索
+  if (minecraft.length < 4) {
+    const instances = ['https://pipedapi.kavin.rocks', 'https://pipedapi.adminforge.de', 'https://api.piped.private.coffee']
+    for (const base of instances) {
+      if (minecraft.length >= 4) break
+      try {
+        const res = await timedFetch(`${base}/search?q=minecraft&filter=videos`, {})
+        const list = Array.isArray(res?.items) ? res.items : []
+        for (const it of list) {
+          if (minecraft.length >= LOW_N) break
+          const videoId = String(it.url ?? '').split('v=')[1]?.split('&')[0] ?? ''
+          if (!videoId) continue
+          if ((it.isLive ?? it.livestream) === true) continue
+          if ((it.duration ?? 0) <= 0) continue
+          minecraft.push({
+            id: `yt-${videoId}`,
+            title: it.title ?? '',
+            channel: it.uploaderName ?? '',
+            views: it.views ?? 0,
+            durationSec: it.duration ?? 0,
+            publishedHoursAgo: it.uploaded ? Math.max(1, Math.round((Date.now() - it.uploaded) / 3600000)) : 48,
+            pic: `https://i.ytimg.com/vi/${videoId}/hq720.jpg`,
+          })
+        }
+      } catch (e) {
+        console.warn(`[yt] mc piped ${base} failed:`, e.message)
+      }
+    }
+    console.warn(`[yt] minecraft fallback: ${minecraft.length}`)
+  }
   return { hot, low, minecraft }
 }
 
