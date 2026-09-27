@@ -64,9 +64,8 @@ export interface BilibiliDesktopPreset {
   pillHeight: number
   pillGap: number
   pillRows: number
-  /** 实测推荐网格: 卡宽 309px 固定列 + gap 20, 容器居中 (1920 视口 5 列) */
-  minCardWidth: number
-  maxCardWidth: number
+  /** 1920px 截图实测: 内容区 1640px，5 × 312px 卡片 + 4 × 20px 间距。 */
+  cardWidth: number
   contentMaxWidth: number
   gridGapX: number
   gridGapY: number
@@ -102,9 +101,8 @@ export const BILIBILI_DESKTOP_PRESET: BilibiliDesktopPreset = {
   pillHeight: 32,
   pillGap: 10,
   pillRows: 2,
-  minCardWidth: 250,
-  maxCardWidth: 320,
-  contentMaxWidth: 1720,
+  cardWidth: 312,
+  contentMaxWidth: 1640,
   gridGapX: 20,
   gridGapY: 20,
   thumbnailRadius: 6,

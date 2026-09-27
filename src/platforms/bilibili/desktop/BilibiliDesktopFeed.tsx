@@ -135,7 +135,8 @@ function BilibiliVideoCard({ video, t, clickable, onSelect }: { video: FeedVideo
 export function BilibiliDesktopFeed({ feed, theme, frameWidth, onSelectVideo }: FeedProps) {
   const t = BILI_THEMES[theme]
   const clickable = !!onSelectVideo
-  const columns = frameWidth >= 2200 ? 6 : frameWidth >= 1700 ? 5 : frameWidth >= 1260 ? 4 : 3
+  const columns = frameWidth >= 1720 ? 5 : frameWidth >= 1280 ? 4 : 3
+  const cardWidth = Math.min(P.cardWidth, Math.floor((frameWidth - 48 - (columns - 1) * P.gridGapX) / columns))
 
   return (
     <div className="relative h-full w-full" style={{ background: t.pageBg, fontFamily: P.font, color: t.textPrimary }}>
@@ -237,12 +238,11 @@ export function BilibiliDesktopFeed({ feed, theme, frameWidth, onSelectVideo }: 
         <div
           className="mx-auto grid"
           style={{
-            width: 'calc(100% - 96px)',
+            width: columns * cardWidth + (columns - 1) * P.gridGapX,
             maxWidth: P.contentMaxWidth,
             paddingTop: 20,
             paddingBottom: 40,
-            gridTemplateColumns: `repeat(${columns}, minmax(${P.minCardWidth}px, ${P.maxCardWidth}px))`,
-            justifyContent: 'space-between',
+            gridTemplateColumns: `repeat(${columns}, ${cardWidth}px)`,
             columnGap: P.gridGapX,
             rowGap: P.gridGapY,
           }}
