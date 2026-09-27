@@ -1,7 +1,7 @@
 import { Home, User, Zap, Plus, Search, Mail, Gamepad2 } from 'lucide-react'
 import type { FeedProps } from '../../types'
 import { BILIBILI_MOBILE_PRESET as P, BILI_THEMES } from '../presets'
-import { ThumbImage, InspectProbe } from '../../../components/feed/primitives'
+import { ThumbImage, FeedAvatar, InspectProbe } from '../../../components/feed/primitives'
 import { formatCount, formatDuration, formatPublishTime } from '../../../lib/format'
 import type { FeedVideo } from '../../../types'
 
@@ -62,7 +62,10 @@ function BilibiliMobileCard({ video, t, clickable, onSelect }: { video: FeedVide
           className="flex items-center justify-between"
           style={{ marginTop: P.metaMarginTop, fontSize: P.metaFontSize, lineHeight: `${P.metaLineHeight}px`, color: t.textSecondary }}
         >
-          <span className="truncate">{video.channel}</span>
+          <span className="flex min-w-0 items-center gap-1">
+            <FeedAvatar name={video.avatarName} assetId={video.avatarAssetId} src={video.avatarSrc} size={18} />
+            <span className="truncate">{video.channel}</span>
+          </span>
           <span className="shrink-0 pl-1">{formatPublishTime(video.publishedHoursAgo)}</span>
         </div>
       </div>
@@ -81,6 +84,7 @@ function BilibiliMobileCard({ video, t, clickable, onSelect }: { video: FeedVide
 export function BilibiliMobileFeed({ feed, theme, onSelectVideo }: FeedProps) {
   const t = BILI_THEMES[theme]
   const clickable = !!onSelectVideo
+  const owner = feed.find((video) => video.kind === 'candidate')
 
   return (
     <div className="relative h-full w-full" style={{ background: t.pageBg, fontFamily: P.font, color: t.textPrimary }}>
@@ -88,9 +92,7 @@ export function BilibiliMobileFeed({ feed, theme, onSelectVideo }: FeedProps) {
         {/* APP 首页是头像/搜索顶栏 + 频道标签栏两层结构。 */}
         <header className="sticky top-0 z-30 border-b" style={{ background: t.headerBg, borderColor: t.border }}>
           <div className="flex items-center gap-2" style={{ height: P.topBarHeight, padding: '0 10px' }}>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: 'linear-gradient(135deg,#fb7299,#ff9db8)' }}>
-              我
-            </div>
+            <FeedAvatar name={owner?.avatarName ?? '我'} assetId={owner?.avatarAssetId} src={owner?.avatarSrc} size={32} />
             <div
               className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-full px-3"
               style={{ background: t.searchBg, color: t.textSecondary }}

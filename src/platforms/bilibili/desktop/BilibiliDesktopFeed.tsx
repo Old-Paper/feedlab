@@ -116,7 +116,10 @@ function BilibiliVideoCard({ video, t, clickable, onSelect }: { video: FeedVideo
           className="flex items-center justify-between"
           style={{ marginTop: P.metaMarginTop, fontSize: P.metaFontSize, lineHeight: `${P.metaLineHeight}px`, color: t.textSecondary }}
         >
-          <span className="truncate">{video.channel}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <FeedAvatar name={video.avatarName} assetId={video.avatarAssetId} src={video.avatarSrc} size={20} />
+            <span className="truncate">{video.channel}</span>
+          </span>
           <span className="shrink-0 pl-2">{formatPublishTime(video.publishedHoursAgo)}</span>
         </div>
       </div>
@@ -135,6 +138,7 @@ function BilibiliVideoCard({ video, t, clickable, onSelect }: { video: FeedVideo
 export function BilibiliDesktopFeed({ feed, theme, frameWidth, onSelectVideo }: FeedProps) {
   const t = BILI_THEMES[theme]
   const clickable = !!onSelectVideo
+  const owner = feed.find((video) => video.kind === 'candidate')
   const columns = frameWidth >= 1720 ? 5 : frameWidth >= 1280 ? 4 : 3
   const cardWidth = Math.min(P.cardWidth, Math.floor((frameWidth - 48 - (columns - 1) * P.gridGapX) / columns))
 
@@ -171,7 +175,7 @@ export function BilibiliDesktopFeed({ feed, theme, frameWidth, onSelectVideo }: 
               <span key={l}>{l}</span>
             ))}
           </div>
-          <FeedAvatar name="我" size={34} />
+          <FeedAvatar name={owner?.avatarName ?? '我'} assetId={owner?.avatarAssetId} src={owner?.avatarSrc} size={34} />
           <button className="flex h-9 shrink-0 items-center gap-1 rounded-lg px-4 text-[14px] font-medium" style={{ background: t.accent, color: t.accentText }}>
             <Plus size={16} />
             投稿

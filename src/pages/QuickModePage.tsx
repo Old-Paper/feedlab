@@ -179,7 +179,13 @@ export function QuickModePage() {
       // capture 未建立时忽略
     }
     setDragActive(false)
-    if (!st.active) return
+    if (!st.active) {
+      // Pointer capture is required for drag-and-drop, but it also prevents the
+      // thumbnail's normal click event from firing in some browsers. A short
+      // press on the candidate thumbnail is therefore handled here directly.
+      setEditorOpen(true)
+      return
+    }
     const hitEl = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-inspect="thumb"]') as HTMLElement | null
     if (!hitEl) return
     const thumbs = [...document.querySelectorAll('[data-inspect="thumb"]')]
