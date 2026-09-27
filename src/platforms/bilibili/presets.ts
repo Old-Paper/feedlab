@@ -9,7 +9,7 @@ export interface BilibiliThemePalette extends FeedTheme {}
 // 颜色取自 bilibili.com 线上实测: 页面底 rgb(241,242,243), 标题 rgb(24,25,28),
 // 次要文字 rgb(148,153,160), 分类 pill 背景 rgb(246,247,248) 文字 rgb(97,102,109)
 const light: BilibiliThemePalette = {
-  pageBg: '#f1f2f3',
+  pageBg: '#ffffff',
   surface: '#ffffff',
   headerBg: '#ffffff',
   border: '#e3e5e7',
@@ -58,12 +58,16 @@ export interface BilibiliDesktopPreset {
   font: string
   /** 实测 header 64px (bili-header__bar) */
   headerHeight: number
+  heroHeight: number
+  channelBarHeight: number
   /** 分类入口两行 pill: 实测 pill 高 32 / 圆角 6 / gap 10 / 字 14 #61666d bg #f6f7f8 */
   pillHeight: number
   pillGap: number
   pillRows: number
   /** 实测推荐网格: 卡宽 309px 固定列 + gap 20, 容器居中 (1920 视口 5 列) */
-  cardWidth: number
+  minCardWidth: number
+  maxCardWidth: number
+  contentMaxWidth: number
   gridGapX: number
   gridGapY: number
   thumbnailRadius: number
@@ -93,10 +97,14 @@ export interface BilibiliDesktopPreset {
 export const BILIBILI_DESKTOP_PRESET: BilibiliDesktopPreset = {
   font: BILI_FONT,
   headerHeight: 64,
+  heroHeight: 155,
+  channelBarHeight: 104,
   pillHeight: 32,
   pillGap: 10,
   pillRows: 2,
-  cardWidth: 309,
+  minCardWidth: 250,
+  maxCardWidth: 320,
+  contentMaxWidth: 1720,
   gridGapX: 20,
   gridGapY: 20,
   thumbnailRadius: 6,
@@ -122,8 +130,9 @@ export const BILIBILI_DESKTOP_PRESET: BilibiliDesktopPreset = {
 
 export interface BilibiliMobilePreset {
   font: string
-  /** m.bilibili.com 顶部导航条 */
-  navRowHeight: number
+  /** APP 顶栏与频道标签栏是两层独立结构。 */
+  topBarHeight: number
+  tabsHeight: number
   bottomNavHeight: number
   gridColumns: number
   /** APP 风格紧凑间距 (m 站设计语言, 卡宽随视口自适应) */
@@ -151,15 +160,16 @@ export interface BilibiliMobilePreset {
 
 export const BILIBILI_MOBILE_PRESET: BilibiliMobilePreset = {
   font: BILI_FONT,
-  navRowHeight: 48,
-  bottomNavHeight: 50,
+  topBarHeight: 48,
+  tabsHeight: 40,
+  bottomNavHeight: 54,
   gridColumns: 2,
   contentPaddingX: 8,
   gridGapX: 8,
-  gridGapY: 12,
+  gridGapY: 16,
   thumbnailRadius: 6,
-  titleFontSize: 15,
-  titleLineHeight: 22,
+  titleFontSize: 14,
+  titleLineHeight: 20,
   titleLines: 2,
   titleWeight: 400,
   titlePaddingRight: 30,
@@ -170,5 +180,5 @@ export const BILIBILI_MOBILE_PRESET: BilibiliMobilePreset = {
   statsFontSize: 13,
   statsLineHeight: 18,
   durationFontSize: 13,
-  navLinks: ['首页', '番剧', '直播', '游戏中心', '会员购', '漫画', '赛事'],
+  navLinks: ['直播', '推荐', '热门', '动画', '影视', '新征程'],
 }

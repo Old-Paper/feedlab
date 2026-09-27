@@ -1,4 +1,4 @@
-import { Home, User, Zap, Compass, Plus } from 'lucide-react'
+import { Home, User, Zap, Plus, Search, Mail, Gamepad2 } from 'lucide-react'
 import type { FeedProps } from '../../types'
 import { BILIBILI_MOBILE_PRESET as P, BILI_THEMES } from '../presets'
 import { ThumbImage, InspectProbe } from '../../../components/feed/primitives'
@@ -25,11 +25,21 @@ function BilibiliMobileCard({ video, t, clickable, onSelect }: { video: FeedVide
             color: t.badgeText,
           }}
         >
-          <span className="flex items-center gap-0.5" style={{ marginRight: 8 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 2.5v19l16-9.5z" />
-            </svg>
-            {formatCount(video.views)}
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="flex items-center gap-0.5">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4 2.5v19l16-9.5z" />
+              </svg>
+              {formatCount(video.views)}
+            </span>
+            {video.danmaku !== undefined ? (
+              <span className="flex items-center gap-0.5">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5z" />
+                </svg>
+                {formatCount(video.danmaku)}
+              </span>
+            ) : null}
           </span>
           <span>{formatDuration(video.durationSec)}</span>
         </div>
@@ -75,37 +85,44 @@ export function BilibiliMobileFeed({ feed, theme, onSelectVideo }: FeedProps) {
   return (
     <div className="relative h-full w-full" style={{ background: t.pageBg, fontFamily: P.font, color: t.textPrimary }}>
       <div className="absolute inset-0 overflow-y-auto" style={{ paddingBottom: P.bottomNavHeight }}>
-        {/* 顶部导航: logo + 横向频道链接 (m.bilibili.com 结构) */}
+        {/* APP 首页是头像/搜索顶栏 + 频道标签栏两层结构。 */}
         <header className="sticky top-0 z-30 border-b" style={{ background: t.headerBg, borderColor: t.border }}>
-          <div className="flex items-center gap-3" style={{ height: P.navRowHeight, padding: '0 10px' }}>
-            <svg width="24" height="21" viewBox="0 0 34 30" className="shrink-0">
-              <path d="M8 3 L13 8 M26 3 L21 8" stroke={t.accent} strokeWidth="2.8" strokeLinecap="round" fill="none" />
-              <rect x="3" y="8" width="28" height="19" rx="5" fill="none" stroke={t.textPrimary} strokeWidth="2.6" />
-              <rect x="9.5" y="13.5" width="4" height="5.5" rx="1.8" fill={t.textPrimary} />
-              <rect x="20.5" y="13.5" width="4" height="5.5" rx="1.8" fill={t.textPrimary} />
-            </svg>
-            <nav className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
-              {P.navLinks.map((link, i) => (
+          <div className="flex items-center gap-2" style={{ height: P.topBarHeight, padding: '0 10px' }}>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: 'linear-gradient(135deg,#fb7299,#ff9db8)' }}>
+              我
+            </div>
+            <div
+              className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-full px-3"
+              style={{ background: t.searchBg, color: t.textSecondary }}
+            >
+              <Search size={15} />
+              <span className="truncate text-[13px]">大家都在搜：热门视频</span>
+            </div>
+            <Gamepad2 size={20} color={t.accent} />
+            <Mail size={20} color={t.textSecondary} />
+          </div>
+          <nav className="flex items-center gap-5 overflow-hidden px-3" style={{ height: P.tabsHeight }}>
+              {P.navLinks.map((link) => {
+                const active = link === '推荐'
+                return (
                 <span
                   key={link}
-                  className="shrink-0 whitespace-nowrap"
-                  style={{ fontSize: 14, fontWeight: i === 0 ? 600 : 400, color: i === 0 ? t.accent : t.textPrimary }}
+                  className="relative flex h-full shrink-0 items-center whitespace-nowrap"
+                  style={{ fontSize: 15, fontWeight: active ? 600 : 400, color: active ? t.accent : t.textPrimary }}
                 >
                   {link}
+                  {active ? <span className="absolute inset-x-1 bottom-0 h-0.5 rounded-full" style={{ background: t.accent }} /> : null}
                 </span>
-              ))}
-              <span className="shrink-0" style={{ fontSize: 14, color: t.textSecondary }}>
-                ›
-              </span>
-            </nav>
-          </div>
+                )
+              })}
+          </nav>
         </header>
 
         {/* 双列网格 (APP 紧凑间距) */}
         <div
           className="grid"
           style={{
-            padding: `10px ${P.contentPaddingX}px 20px`,
+            padding: `8px ${P.contentPaddingX}px 24px`,
             gridTemplateColumns: `repeat(${P.gridColumns}, minmax(0, 1fr))`,
             columnGap: P.gridGapX,
             rowGap: P.gridGapY,
@@ -127,8 +144,8 @@ export function BilibiliMobileFeed({ feed, theme, onSelectVideo }: FeedProps) {
           <span style={{ fontSize: 10 }}>首页</span>
         </div>
         <div className="flex flex-1 flex-col items-center gap-0.5" style={{ color: t.navInactive }}>
-          <Compass size={21} />
-          <span style={{ fontSize: 10 }}>频道</span>
+          <Zap size={21} />
+          <span style={{ fontSize: 10 }}>动态</span>
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="flex h-8 w-12 items-center justify-center rounded-md" style={{ background: t.accent, color: '#ffffff' }}>
@@ -136,8 +153,8 @@ export function BilibiliMobileFeed({ feed, theme, onSelectVideo }: FeedProps) {
           </div>
         </div>
         <div className="flex flex-1 flex-col items-center gap-0.5" style={{ color: t.navInactive }}>
-          <Zap size={21} />
-          <span style={{ fontSize: 10 }}>动态</span>
+          <span className="text-lg leading-none">◆</span>
+          <span style={{ fontSize: 10 }}>会员购</span>
         </div>
         <div className="flex flex-1 flex-col items-center gap-0.5" style={{ color: t.navInactive }}>
           <User size={21} />

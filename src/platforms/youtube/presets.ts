@@ -58,8 +58,9 @@ export interface YouTubeDesktopPreset {
   sidebarAutoExpandMin: number
   chipsHeight: number
   contentPaddingX: number
-  /** 实测首页固定 3 列大卡(1366→344px / 1920→528px / 2560→700px),列间 40 行距 36 */
-  columns: number
+  /** 首页按可用内容宽度响应式切换 2/3/4 列。 */
+  minCardWidth: number
+  maxColumns: number
   gridGapX: number
   gridGapY: number
   thumbnailRadius: number
@@ -83,9 +84,10 @@ export const YOUTUBE_DESKTOP_PRESET: YouTubeDesktopPreset = {
   sidebarAutoExpandMin: 1312,
   chipsHeight: 56,
   contentPaddingX: 24,
-  columns: 3,
-  gridGapX: 40,
-  gridGapY: 36,
+  minCardWidth: 300,
+  maxColumns: 4,
+  gridGapX: 16,
+  gridGapY: 40,
   thumbnailRadius: 12,
   titleFontSize: 16,
   titleLineHeight: 22,
@@ -95,7 +97,7 @@ export const YOUTUBE_DESKTOP_PRESET: YouTubeDesktopPreset = {
   metaLineHeight: 20,
   avatarSize: 36,
   durationFontSize: 12,
-  searchMaxWidth: 540,
+  searchMaxWidth: 640,
   chips: ['全部', '音乐', '游戏', '直播', '编程', '动画', '新闻', '播客', '纪录片', '实况', 'Mixes', '最新上传', '新内容', '观看过的'],
 }
 
@@ -118,6 +120,8 @@ export interface YouTubeMobilePreset {
   showChips: boolean
   bottomNavLabels: boolean
   durationFontSize: number
+  thumbnailInset: number
+  cardGap: number
 }
 
 // 卡片数值按 m.youtube.com (390×844) 线上实测: 缩略图圆角 12、标题 16px/22 weight 500
@@ -128,7 +132,7 @@ export const YOUTUBE_MOBILE_PRESETS: Record<'standard' | 'experimental', YouTube
     headerHeight: 56,
     chipsHeight: 44,
     bottomNavHeight: 56,
-    thumbnailRadius: 12,
+    thumbnailRadius: 0,
     titleFontSize: 16,
     titleLineHeight: 22,
     titleLines: 2,
@@ -141,13 +145,15 @@ export const YOUTUBE_MOBILE_PRESETS: Record<'standard' | 'experimental', YouTube
     showChips: true,
     bottomNavLabels: true,
     durationFontSize: 12,
+    thumbnailInset: 0,
+    cardGap: 8,
   },
   experimental: {
     font: YT_FONT,
     headerHeight: 56,
     chipsHeight: 44,
     bottomNavHeight: 56,
-    thumbnailRadius: 16,
+    thumbnailRadius: 12,
     titleFontSize: 15,
     titleLineHeight: 20,
     titleLines: 2,
@@ -160,5 +166,7 @@ export const YOUTUBE_MOBILE_PRESETS: Record<'standard' | 'experimental', YouTube
     showChips: false,
     bottomNavLabels: false,
     durationFontSize: 12,
+    thumbnailInset: 8,
+    cardGap: 8,
   },
 }

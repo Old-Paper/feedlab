@@ -10,18 +10,40 @@ import type { FeedVideo } from '../../../types'
 // 网格固定 309px 列 gap 20 居中;封面圆角 6;播放/弹幕/时长位于封面底部渐变条内;
 // 标题 15px/22 weight 400 clamp 2 padding-right 30;UP 行 13px/17 #9499a0 margin-top 4。
 
-function BiliLogo({ t }: { t: (typeof BILI_THEMES)['light'] }) {
+function BiliLogo({ t, inverted = false }: { t: (typeof BILI_THEMES)['light']; inverted?: boolean }) {
+  const color = inverted ? '#ffffff' : t.textPrimary
   return (
     <div className="flex items-center gap-1">
       <svg width="30" height="26" viewBox="0 0 34 30">
-        <path d="M8 3 L13 8 M26 3 L21 8" stroke={t.accent} strokeWidth="2.8" strokeLinecap="round" fill="none" />
-        <rect x="3" y="8" width="28" height="19" rx="5" fill="none" stroke={t.textPrimary} strokeWidth="2.6" />
-        <rect x="9.5" y="13.5" width="4" height="5.5" rx="1.8" fill={t.textPrimary} />
-        <rect x="20.5" y="13.5" width="4" height="5.5" rx="1.8" fill={t.textPrimary} />
+        <path d="M8 3 L13 8 M26 3 L21 8" stroke={inverted ? '#ffffff' : t.accent} strokeWidth="2.8" strokeLinecap="round" fill="none" />
+        <rect x="3" y="8" width="28" height="19" rx="5" fill="none" stroke={color} strokeWidth="2.6" />
+        <rect x="9.5" y="13.5" width="4" height="5.5" rx="1.8" fill={color} />
+        <rect x="20.5" y="13.5" width="4" height="5.5" rx="1.8" fill={color} />
       </svg>
-      <span className="text-[20px] font-bold" style={{ color: t.textPrimary, letterSpacing: '-0.5px' }}>
+      <span className="text-[20px] font-bold" style={{ color, letterSpacing: '-0.5px' }}>
         bilibili
       </span>
+    </div>
+  )
+}
+
+function HeroBackdrop({ dark }: { dark: boolean }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        className="absolute inset-0"
+        style={{
+          background: dark
+            ? 'linear-gradient(120deg, #17233b 0%, #273351 46%, #392b4c 100%)'
+            : 'linear-gradient(120deg, #77c7ed 0%, #a3d8ef 46%, #d4c4e7 100%)',
+        }}
+      />
+      <svg className="absolute bottom-0 left-0 h-[112px] w-full" viewBox="0 0 1600 120" preserveAspectRatio="none">
+        <path d="M0 94C180 52 285 68 430 89s290 4 420-35c150-45 260 10 365 31 127 25 250 0 385-42v77H0z" fill={dark ? '#1c2436' : '#8cc8d6'} opacity=".9" />
+        <path d="M0 108c220-30 300-8 490-25 180-16 270-37 420-15 163 24 322 31 690-2v54H0z" fill={dark ? '#101725' : '#c6e5e8'} opacity=".9" />
+      </svg>
+      <div className="absolute left-[7%] top-[76px] h-10 w-40 rounded-full bg-white/15 blur-sm" />
+      <div className="absolute right-[11%] top-[52px] h-12 w-56 rounded-full bg-white/15 blur-sm" />
     </div>
   )
 }
@@ -110,52 +132,57 @@ function BilibiliVideoCard({ video, t, clickable, onSelect }: { video: FeedVideo
   )
 }
 
-export function BilibiliDesktopFeed({ feed, theme, onSelectVideo }: FeedProps) {
+export function BilibiliDesktopFeed({ feed, theme, frameWidth, onSelectVideo }: FeedProps) {
   const t = BILI_THEMES[theme]
   const clickable = !!onSelectVideo
+  const columns = frameWidth >= 2200 ? 6 : frameWidth >= 1700 ? 5 : frameWidth >= 1260 ? 4 : 3
 
   return (
     <div className="relative h-full w-full" style={{ background: t.pageBg, fontFamily: P.font, color: t.textPrimary }}>
-      {/* Header 64px */}
-      <header className="absolute inset-x-0 top-0 z-30 flex items-center gap-5 border-b px-6" style={{ height: P.headerHeight, background: t.headerBg, borderColor: t.border }}>
-        <BiliLogo t={t} />
-        <nav className="hidden items-center gap-5 lg:flex">
+      {/* B站首页横幅 + 顶部导航。横幅是桌面首页最重要的视觉锚点。 */}
+      <header className="absolute inset-x-0 top-0 z-30" style={{ height: P.heroHeight }}>
+        <HeroBackdrop dark={theme === 'dark'} />
+        <div className="relative z-10 flex items-center gap-5 px-6" style={{ height: P.headerHeight, color: '#ffffff' }}>
+          <BiliLogo t={t} inverted />
+          <nav className="hidden items-center gap-5 lg:flex">
           {P.navLinks.map((link, i) => (
             <span
               key={link}
               className="whitespace-nowrap"
-              style={{ fontSize: 14, fontWeight: i === 0 ? 600 : 400, color: i === 0 ? t.accent : t.textPrimary }}
+              style={{ fontSize: 14, fontWeight: i === 0 ? 600 : 400, color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,.35)' }}
             >
               {link}
             </span>
           ))}
-        </nav>
-        <div className="flex flex-1 justify-center">
-          <div className="flex w-full items-center" style={{ maxWidth: P.searchMaxWidth }}>
-            <div className="flex h-9 flex-1 items-center rounded-l-lg border px-3" style={{ borderColor: t.searchBorder, background: t.searchBg }}>
-              <span style={{ fontSize: 13, color: t.textSecondary }}>搜索视频、番剧、UP主</span>
+          </nav>
+          <div className="flex flex-1 justify-center">
+            <div className="flex w-full overflow-hidden rounded-lg bg-white/95 shadow-lg" style={{ maxWidth: P.searchMaxWidth }}>
+              <div className="flex h-10 flex-1 items-center px-4">
+                <span style={{ fontSize: 14, color: '#61666d' }}>搜索你感兴趣的视频</span>
+              </div>
+              <button className="flex h-10 w-12 items-center justify-center" style={{ color: '#18191c' }}>
+                <Search size={18} />
+              </button>
             </div>
-            <button className="flex h-9 w-14 items-center justify-center rounded-r-lg" style={{ background: t.accent }}>
-              <Search size={16} color="#ffffff" />
-            </button>
           </div>
+          <div className="hidden items-center gap-4 xl:flex" style={{ fontSize: 13, color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,.35)' }}>
+            {P.rightEntryLinks.map((l) => (
+              <span key={l}>{l}</span>
+            ))}
+          </div>
+          <FeedAvatar name="我" size={34} />
+          <button className="flex h-9 shrink-0 items-center gap-1 rounded-lg px-4 text-[14px] font-medium" style={{ background: t.accent, color: t.accentText }}>
+            <Plus size={16} />
+            投稿
+          </button>
         </div>
-        <div className="hidden items-center gap-4 xl:flex" style={{ fontSize: 13, color: t.textSecondary }}>
-          {P.rightEntryLinks.map((l) => (
-            <span key={l}>{l}</span>
-          ))}
-        </div>
-        <FeedAvatar name="我" size={34} />
-        <button className="flex h-8 shrink-0 items-center gap-1 rounded-lg px-3 text-[13px] font-medium" style={{ background: t.accent, color: t.accentText }}>
-          <Plus size={15} />
-          投稿
-        </button>
+        <div className="absolute bottom-5 left-8 text-[28px] font-bold tracking-tight text-white drop-shadow-lg">哔哩哔哩 · 干杯~</div>
       </header>
 
       {/* 分类入口区: 左侧动态/热门图标 + 两行 pill + 右侧链接 */}
       <div
-        className="absolute inset-x-0 z-20 flex items-start gap-6 border-b px-6 py-3"
-        style={{ top: P.headerHeight, background: t.headerBg, borderColor: t.border }}
+        className="absolute inset-x-0 z-20 flex items-center gap-6 px-8 py-4"
+        style={{ top: P.heroHeight, height: P.channelBarHeight, background: t.headerBg }}
       >
         <div className="hidden shrink-0 gap-4 md:flex">
           {[
@@ -172,7 +199,7 @@ export function BilibiliDesktopFeed({ feed, theme, onSelectVideo }: FeedProps) {
             </div>
           ))}
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-hidden">
           {([P.chipsRow1, P.chipsRow2] as const).map((row, ri) => (
             <div key={ri} className="grid overflow-hidden" style={{ gridAutoFlow: 'column', gap: P.pillGap, justifyContent: 'start', marginBottom: ri === 0 ? P.pillGap : 0 }}>
               {row.map((chip) => (
@@ -205,15 +232,17 @@ export function BilibiliDesktopFeed({ feed, theme, onSelectVideo }: FeedProps) {
         </div>
       </div>
 
-      {/* 推荐网格: 实测固定 309px 列 + gap 20 居中 */}
-      <main className="absolute inset-x-0 bottom-0 overflow-y-auto" style={{ top: P.headerHeight + 96 }}>
+      {/* 推荐网格: 1920px 为 5 列，常见笔记本宽度为 4 列。 */}
+      <main className="feed-scroll absolute inset-x-0 bottom-0 overflow-y-auto" style={{ top: P.heroHeight + P.channelBarHeight }}>
         <div
-          className="grid"
+          className="mx-auto grid"
           style={{
-            paddingTop: 14,
-            paddingBottom: 32,
-            gridTemplateColumns: `repeat(auto-fill, ${P.cardWidth}px)`,
-            justifyContent: 'center',
+            width: 'calc(100% - 96px)',
+            maxWidth: P.contentMaxWidth,
+            paddingTop: 20,
+            paddingBottom: 40,
+            gridTemplateColumns: `repeat(${columns}, minmax(${P.minCardWidth}px, ${P.maxCardWidth}px))`,
+            justifyContent: 'space-between',
             columnGap: P.gridGapX,
             rowGap: P.gridGapY,
           }}

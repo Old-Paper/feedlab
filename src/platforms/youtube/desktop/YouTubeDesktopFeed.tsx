@@ -85,7 +85,7 @@ function YouTubeVideoCard({ video, t, clickable, onSelect }: { video: FeedVideo;
 function SidebarRow({ icon, label, active, t }: { icon?: React.ReactNode; label: string; active?: boolean; t: (typeof YT_THEMES)['light'] }) {
   return (
     <div
-      className="flex items-center gap-6 rounded-lg px-3 py-2 text-sm"
+      className="flex h-10 items-center gap-6 rounded-lg px-3 text-sm"
       style={{
         background: active ? t.hoverBg : undefined,
         color: t.textPrimary,
@@ -113,6 +113,7 @@ export function YouTubeDesktopFeed({ feed, theme, frameWidth, onSelectVideo }: F
   const expanded = frameWidth >= P.sidebarAutoExpandMin
   const sidebarW = expanded ? P.sidebarWidth : P.miniSidebarWidth
   const clickable = !!onSelectVideo
+  const columns = Math.min(P.maxColumns, frameWidth >= 1760 ? 4 : frameWidth >= 1120 ? 3 : 2)
 
   return (
     <div className="relative h-full w-full" style={{ background: t.pageBg, color: t.textPrimary, fontFamily: P.font }}>
@@ -128,8 +129,7 @@ export function YouTubeDesktopFeed({ feed, theme, frameWidth, onSelectVideo }: F
               className="flex h-10 flex-1 items-center rounded-l-full border px-4"
               style={{ borderColor: t.searchBorder, background: t.searchBg }}
             >
-              <Search size={16} color={t.textSecondary} />
-              <span className="ml-3 text-sm" style={{ color: t.textSecondary }}>
+              <span className="text-base" style={{ color: t.textSecondary }}>
                 搜索
               </span>
             </div>
@@ -202,8 +202,11 @@ export function YouTubeDesktopFeed({ feed, theme, frameWidth, onSelectVideo }: F
       </aside>
 
       {/* Content */}
-      <main className="absolute bottom-0 overflow-y-auto" style={{ top: P.headerHeight, left: sidebarW, right: 0 }}>
-        <div className="sticky top-0 z-10 flex gap-3 overflow-hidden" style={{ background: t.pageBg, padding: `8px ${P.contentPaddingX}px` }}>
+      <main className="feed-scroll absolute bottom-0 overflow-y-auto" style={{ top: P.headerHeight, left: sidebarW, right: 0 }}>
+        <div
+          className="sticky top-0 z-10 flex items-center gap-3 overflow-hidden"
+          style={{ height: P.chipsHeight, background: t.pageBg, padding: `0 ${P.contentPaddingX}px` }}
+        >
           {P.chips.map((chip, i) => (
             <span
               key={chip}
@@ -221,8 +224,8 @@ export function YouTubeDesktopFeed({ feed, theme, frameWidth, onSelectVideo }: F
         <div
           className="grid"
           style={{
-            padding: `8px ${P.contentPaddingX}px 32px`,
-            gridTemplateColumns: `repeat(${P.columns}, minmax(0, 1fr))`,
+            padding: `24px ${P.contentPaddingX}px 40px`,
+            gridTemplateColumns: `repeat(${columns}, minmax(${P.minCardWidth}px, 1fr))`,
             columnGap: P.gridGapX,
             rowGap: P.gridGapY,
           }}

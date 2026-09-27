@@ -21,8 +21,21 @@ function YouTubeLogoCompact({ color }: { color: string }) {
 
 function MobileCard({ video, p, t, clickable, onSelect }: { video: FeedVideo; p: YouTubeMobilePreset; t: (typeof YT_THEMES)['light']; clickable: boolean; onSelect?: (v: FeedVideo) => void }) {
   const inner = (
-    <div className={clickable ? 'cursor-pointer pb-4' : 'pb-4'} onClick={clickable ? () => onSelect?.(video) : undefined}>
-      <div className="relative overflow-hidden" data-inspect="thumb" style={{ borderRadius: p.thumbnailRadius, aspectRatio: '16 / 9', background: '#1a1a1a' }}>
+    <div
+      className={clickable ? 'cursor-pointer' : undefined}
+      onClick={clickable ? () => onSelect?.(video) : undefined}
+      style={{ paddingBottom: p.cardGap }}
+    >
+      <div
+        className="relative overflow-hidden"
+        data-inspect="thumb"
+        style={{
+          margin: `0 ${p.thumbnailInset}px`,
+          borderRadius: p.thumbnailRadius,
+          aspectRatio: '16 / 9',
+          background: '#1a1a1a',
+        }}
+      >
         <ThumbImage video={video} env="youtube-mobile" className="h-full w-full object-cover" />
         <span
           className="absolute bottom-1.5 right-1.5 rounded font-medium"
@@ -42,11 +55,8 @@ function MobileCard({ video, p, t, clickable, onSelect }: { video: FeedVideo; p:
           >
             {video.title}
           </div>
-          <div className="truncate" style={{ marginTop: 2, fontSize: p.metaFontSize, lineHeight: `${p.metaLineHeight}px`, color: t.textSecondary }}>
-            {video.channel}
-          </div>
-          <div style={{ fontSize: p.metaFontSize, lineHeight: `${p.metaLineHeight}px`, color: t.textSecondary }}>
-            {formatCount(video.views)}次观看 · {formatPublishTime(video.publishedHoursAgo)}
+          <div className="truncate" style={{ marginTop: 3, fontSize: p.metaFontSize, lineHeight: `${p.metaLineHeight}px`, color: t.textSecondary }}>
+            {video.channel} · {formatCount(video.views)}次观看 · {formatPublishTime(video.publishedHoursAgo)}
           </div>
         </div>
         <div className="shrink-0">
@@ -81,7 +91,7 @@ export function YouTubeMobileFeed({ feed, theme, onSelectVideo, ytMobileStyle = 
           style={{ height: p.headerHeight, background: t.headerBg, padding: '0 14px' }}
         >
           <YouTubeLogoCompact color={t.textPrimary} />
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4">
             <Cast size={21} color={t.textPrimary} />
             <Bell size={21} color={t.textPrimary} />
             <Search size={21} color={t.textPrimary} />
@@ -109,7 +119,7 @@ export function YouTubeMobileFeed({ feed, theme, onSelectVideo, ytMobileStyle = 
         ) : null}
 
         {/* Vertical feed */}
-        <div className="pt-1">
+        <div>
           {feed.map((v) => (
             <MobileCard key={v.id} video={v} p={p} t={t} clickable={clickable} onSelect={onSelectVideo} />
           ))}
