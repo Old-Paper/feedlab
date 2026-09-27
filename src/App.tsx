@@ -1,8 +1,9 @@
 import { HashRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom'
-import { BarChart3, Clapperboard, Eye, GitCompare, LayoutGrid, Menu, X, Monitor, Settings as SettingsIcon, Home as HomeIcon } from 'lucide-react'
+import { BarChart3, Clapperboard, Eye, GitCompare, LayoutGrid, Menu, X, Monitor, Settings as SettingsIcon, Zap, FolderOpen } from 'lucide-react'
 import { clsx } from 'clsx'
 import { ProjectLayout } from './pages/ProjectLayout'
 import { HomePage } from './pages/HomePage'
+import { QuickModePage } from './pages/QuickModePage'
 import { ProjectEditorPage } from './pages/editor/ProjectEditorPage'
 import { SimulatorPage } from './pages/SimulatorPage'
 import { BlindTestPage } from './pages/BlindTestPage'
@@ -64,7 +65,8 @@ function BrandMark() {
 function NavList({ projectId, includeSettings, onNavigate }: { projectId: string | null; includeSettings?: boolean; onNavigate?: () => void }) {
   return (
     <nav className="flex flex-col gap-0.5 px-2" onClick={onNavigate}>
-      <SidebarLink to="/" icon={<HomeIcon size={15} />} label="项目列表" end />
+      <SidebarLink to="/quick" icon={<Zap size={15} />} label="快速测试" />
+      <SidebarLink to="/projects" icon={<FolderOpen size={15} />} label="项目列表" />
       {projectId ? (
         <>
           <div className="mt-3 px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">当前项目</div>
@@ -182,7 +184,9 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route element={<AppShell />}>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<QuickModePage />} />
+          <Route path="/quick" element={<Navigate to="/" replace />} />
+          <Route path="/projects" element={<HomePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route
             path="/project/:projectId"

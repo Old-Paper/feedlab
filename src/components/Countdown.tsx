@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
-/** 3-2-1 full-screen countdown shown before each blind-test exposure. */
-export function CountdownOverlay({ round, total, onDone }: { round: number; total: number; onDone: () => void }) {
+/** 3-2-1 全屏倒计时。total 省略时只显示"第 N 轮"(简单模式)。 */
+export function CountdownOverlay({ round, total, onDone }: { round: number; total?: number; onDone: () => void }) {
   const [n, setN] = useState(3)
 
   useEffect(() => {
@@ -19,9 +19,7 @@ export function CountdownOverlay({ round, total, onDone }: { round: number; tota
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-[#0b0d11]">
-      <div className="text-sm text-zinc-500">
-        第 {round} / {total} 轮
-      </div>
+      <div className="text-sm text-zinc-500">{total != null ? `第 ${round} / ${total} 轮` : `第 ${round} 轮`}</div>
       <div key={n} className="animate-pop text-8xl font-bold tabular-nums text-zinc-100">
         {n > 0 ? n : ''}
       </div>
