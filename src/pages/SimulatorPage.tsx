@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Eye, Info } from 'lucide-react'
+import { Eye, Info, X } from 'lucide-react'
 import { useProjectStore } from '../stores/projectStore'
 import { useSimulationStore, resolvePreviewPosition } from '../stores/simulationStore'
 import { candidateById, derivePosition, generateFeed } from '../features/testing/feedGenerator'
@@ -9,15 +9,20 @@ import { InspectProvider, type InspectInfo } from '../components/feed/primitives
 import { TestSetupBar } from '../components/TestSetupBar'
 import { EmptyState } from '../components/ui'
 
-function InspectPanel({ info }: { info: InspectInfo | null }) {
+function InspectPanel({ info, onClose }: { info: InspectInfo | null; onClose: () => void }) {
   if (!info) return null
   return (
     <div
       className="absolute right-5 top-5 z-30 w-64 animate-fade-in rounded-lg border border-sky-500/40 p-3 text-xs shadow-xl backdrop-blur"
       style={{ background: 'rgba(13, 17, 26, 0.95)' }}
     >
-      <div className="mb-2 flex items-center gap-1.5 font-semibold text-sky-300">
-        <Info size={13} /> 真实显示尺寸
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 font-semibold text-sky-300">
+          <Info size={13} /> 真实显示尺寸
+        </div>
+        <button className="text-zinc-500 hover:text-zinc-200" onClick={onClose} aria-label="关闭">
+          <X size={14} />
+        </button>
       </div>
       <dl className="space-y-1.5 text-zinc-300">
         <Row label="显示尺寸" value={`${info.displayedWidth} × ${info.displayedHeight} px`} />
@@ -94,7 +99,7 @@ export function SimulatorPage() {
                 </div>
               </InspectProvider>
             </DeviceViewport>
-            {sim.inspectEnabled ? <InspectPanel info={inspectInfo} /> : null}
+            {sim.inspectEnabled ? <InspectPanel info={inspectInfo} onClose={() => setInspectInfo(null)} /> : null}
             <div className="pointer-events-none absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[11px] text-zinc-400">
               <Eye size={12} />
               {candidate.name} · 位于第 {position + 1} / {feed.items.length} 位

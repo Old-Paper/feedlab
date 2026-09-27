@@ -104,7 +104,7 @@ export function MockVideosTab() {
   return (
     <div className="space-y-4">
       <SectionCard title="添加自己的干扰视频" hint="用你收集的真实竞品环境做测试">
-        <div className="flex items-start gap-4">
+        <div className="flex flex-col items-start gap-4 sm:flex-row">
           <div className="flex flex-col items-center gap-2">
             <div className="flex aspect-video w-[124px] items-center justify-center overflow-hidden rounded-md border border-[#2f323c] bg-black/40">
               {thumbPreview ? (

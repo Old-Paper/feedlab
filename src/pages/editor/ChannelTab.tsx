@@ -39,7 +39,7 @@ export function ChannelTab() {
   return (
     <div className="space-y-4">
       <SectionCard title="频道身份(通用)">
-        <div className="flex items-start gap-6">
+        <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-start sm:gap-6">
           <div className="flex flex-col items-center gap-2">
             <div className="relative">
               {avatarUrl ? (

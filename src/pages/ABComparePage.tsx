@@ -164,8 +164,7 @@ export function ABComparePage() {
       <div
         className={clsx(
           'min-h-0 flex-1 p-3',
-          sim.abLayout === 'horizontal' && 'flex flex-row gap-3',
-          sim.abLayout === 'vertical' && 'flex flex-col gap-3',
+          sim.abLayout === 'horizontal' ? 'flex flex-col gap-3 lg:flex-row' : 'flex flex-col gap-3',
         )}
       >
         {sim.abLayout === 'toggle' ? (

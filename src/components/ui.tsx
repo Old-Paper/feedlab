@@ -259,8 +259,11 @@ export function Modal({
 
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="flex max-h-full flex-col rounded-xl border border-[#2a2d37] bg-[#16181f] shadow-2xl" style={{ width }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div
+        className="flex max-h-full w-full flex-col rounded-xl border border-[#2a2d37] bg-[#16181f] shadow-2xl"
+        style={{ width, maxWidth: 'calc(100vw - 32px)' }}
+      >
         <header className="flex items-center justify-between border-b border-[#23252e] px-4 py-3">
           <h3 className="text-sm font-semibold text-zinc-100">{title}</h3>
           <IconButton onClick={onClose} aria-label="关闭">

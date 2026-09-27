@@ -124,7 +124,7 @@ export function TestSetupBar({
   showInspect?: boolean
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-[#1e2027] bg-[#101218] px-4 py-2.5">
+    <div className="flex flex-nowrap items-center gap-x-5 gap-y-2 overflow-x-auto border-b border-[#1e2027] bg-[#101218] px-4 py-2.5 md:flex-wrap [&>*]:shrink-0">
       <Segmented<Platform>
         value={sim.platform}
         onChange={(v) => patch({ platform: v })}
@@ -172,7 +172,7 @@ export function TestSetupBar({
         <MockCountPicker value={sim.mockCount} onChange={(v) => patch({ mockCount: v })} />
       </div>
       {showCandidate ? (
-        <Select value={sim.candidateId ?? ''} onChange={(e) => patch({ candidateId: e.target.value || null })}>
+        <Select className="max-w-44" value={sim.candidateId ?? ''} onChange={(e) => patch({ candidateId: e.target.value || null })}>
           <option value="">未选择 Candidate</option>
           {project.candidates.filter((c) => c.enabled).map((c) => (
             <option key={c.id} value={c.id}>

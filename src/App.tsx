@@ -1,5 +1,5 @@
 import { HashRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom'
-import { BarChart3, Clapperboard, Eye, GitCompare, LayoutGrid, Monitor, Settings as SettingsIcon, Home as HomeIcon } from 'lucide-react'
+import { BarChart3, Clapperboard, Eye, GitCompare, LayoutGrid, Menu, X, Monitor, Settings as SettingsIcon, Home as HomeIcon } from 'lucide-react'
 import { clsx } from 'clsx'
 import { ProjectLayout } from './pages/ProjectLayout'
 import { HomePage } from './pages/HomePage'
@@ -13,7 +13,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { useToastStore } from './stores/toastStore'
 import { useProjectStore } from './stores/projectStore'
 import { useSettingsStore } from './stores/settingsStore'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 function ToastHost() {
   const toasts = useToastStore((s) => s.toasts)
@@ -47,40 +47,101 @@ const PROJECT_NAV = [
   { to: 'results', label: '测试结果', icon: BarChart3 },
 ]
 
+function BrandMark() {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+        <Clapperboard size={18} />
+      </div>
+      <div>
+        <div className="text-sm font-bold text-zinc-100">FeedLab</div>
+        <div className="text-[10px] text-zinc-500">封面标题信息流盲测</div>
+      </div>
+    </div>
+  )
+}
+
+function NavList({ projectId, includeSettings, onNavigate }: { projectId: string | null; includeSettings?: boolean; onNavigate?: () => void }) {
+  return (
+    <nav className="flex flex-col gap-0.5 px-2" onClick={onNavigate}>
+      <SidebarLink to="/" icon={<HomeIcon size={15} />} label="项目列表" end />
+      {projectId ? (
+        <>
+          <div className="mt-3 px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">当前项目</div>
+          {PROJECT_NAV.map((item) => (
+            <SidebarLink key={item.to} to={`/project/${projectId}/${item.to}`} icon={<item.icon size={15} />} label={item.label} />
+          ))}
+        </>
+      ) : null}
+      {includeSettings ? (
+        <div className="mt-3 lg:hidden">
+          <SidebarLink to="/settings" icon={<SettingsIcon size={15} />} label="设置" />
+        </div>
+      ) : null}
+    </nav>
+  )
+}
+
 function AppShell() {
   const { pathname } = useLocation()
   const match = /^\/project\/([^/]+)/.exec(pathname)
   const projectId = match?.[1] ?? null
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  // 路由变化时收起移动端抽屉
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [pathname])
+
   return (
-    <div className="flex h-full">
-      <aside className="flex w-52 shrink-0 flex-col border-r border-[#1e2027] bg-[#0d0f13]">
-        <div className="flex items-center gap-2 px-4 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
-            <Clapperboard size={18} />
+    <div className="flex h-full flex-col">
+      {/* 移动端顶栏 */}
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#1e2027] bg-[#0d0f13] px-3 lg:hidden">
+        <BrandMark />
+        <button
+          className="flex h-9 w-9 items-center justify-center rounded-md text-zinc-400 hover:bg-[#1c1e25] hover:text-zinc-100"
+          onClick={() => setMenuOpen(true)}
+          aria-label="打开菜单"
+        >
+          <Menu size={20} />
+        </button>
+      </header>
+
+      <div className="flex min-h-0 flex-1">
+        <aside className="hidden w-52 shrink-0 flex-col border-r border-[#1e2027] bg-[#0d0f13] lg:flex">
+          <div className="px-4 py-4">
+            <BrandMark />
           </div>
-          <div>
-            <div className="text-sm font-bold text-zinc-100">FeedLab</div>
-            <div className="text-[10px] text-zinc-500">封面标题信息流盲测</div>
+          <NavList projectId={projectId} />
+          <div className="mt-auto px-2 pb-3">
+            <SidebarLink to="/settings" icon={<SettingsIcon size={15} />} label="设置" />
           </div>
-        </div>
-        <nav className="flex flex-col gap-0.5 px-2">
-          <SidebarLink to="/" icon={<HomeIcon size={15} />} label="项目列表" end />
-          {projectId ? (
-            <>
-              <div className="mt-3 px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">当前项目</div>
-              {PROJECT_NAV.map((item) => (
-                <SidebarLink key={item.to} to={`/project/${projectId}/${item.to}`} icon={<item.icon size={15} />} label={item.label} />
-              ))}
-            </>
-          ) : null}
-        </nav>
-        <div className="mt-auto px-2 pb-3">
-          <SidebarLink to="/settings" icon={<SettingsIcon size={15} />} label="设置" />
-        </div>
-      </aside>
-      <main className="min-w-0 flex-1 overflow-hidden">
-        <Outlet />
-      </main>
+        </aside>
+
+        {/* 移动端抽屉 */}
+        {menuOpen ? (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setMenuOpen(false)} />
+            <aside className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-[#1e2027] bg-[#0d0f13]">
+              <div className="flex items-center justify-between px-4 py-4">
+                <BrandMark />
+                <button
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-[#1c1e25] hover:text-zinc-100"
+                  onClick={() => setMenuOpen(false)}
+                  aria-label="关闭菜单"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <NavList projectId={projectId} includeSettings onNavigate={() => setMenuOpen(false)} />
+            </aside>
+          </div>
+        ) : null}
+
+        <main className="min-w-0 flex-1 overflow-hidden">
+          <Outlet />
+        </main>
+      </div>
       <ToastHost />
     </div>
   )

@@ -41,8 +41,8 @@ export function HomePage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-6 py-6">
-        <header className="mb-5 flex items-center justify-between">
+      <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6 sm:py-6">
+        <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-lg font-bold text-zinc-100">测试项目</h1>
             <p className="mt-0.5 text-xs text-zinc-500">每个项目包含独立的封面、标题、Candidate 组合与测试数据</p>

@@ -27,20 +27,20 @@ export function ProjectEditorPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-[#1e2027] bg-[#101218] px-5 py-3">
-        <div className="flex items-center justify-between">
+      <header className="border-b border-[#1e2027] bg-[#101218] px-3 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-y-1">
           <h1 className="text-sm font-bold text-zinc-100">{project.name}</h1>
           <div className="text-xs text-zinc-500">
             {project.thumbnails.length} 封面 · {project.titles.length} 标题 · {project.candidates.length} 组合 · 自动保存已开启
           </div>
         </div>
-        <nav className="mt-2.5 flex gap-1">
+        <nav className="mt-2.5 flex gap-1 overflow-x-auto">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={clsx(
-                'rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
+                'shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
                 tab === t.id ? 'bg-[#23252d] text-zinc-100' : 'text-zinc-500 hover:text-zinc-300',
               )}
             >
@@ -50,7 +50,7 @@ export function ProjectEditorPage() {
         </nav>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-5 py-5">
+        <div className="mx-auto max-w-5xl px-3 py-4 sm:px-5 sm:py-5">
           {tab === 'thumbnails' && <ThumbnailsTab />}
           {tab === 'titles' && <TitlesTab />}
           {tab === 'candidates' && <CandidatesTab />}

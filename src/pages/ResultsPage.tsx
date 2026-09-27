@@ -211,7 +211,7 @@ export function ResultsPage() {
             </SectionCard>
 
             <SectionCard title={`最近记录(${Math.min(filtered.length, 40)} / ${filtered.length})`}>
-              <div className="max-h-80 overflow-y-auto">
+              <div className="max-h-80 overflow-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="text-zinc-500">
                     <tr>

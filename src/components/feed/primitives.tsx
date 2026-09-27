@@ -138,6 +138,12 @@ export function InspectProbe({ video, children, className }: { video: FeedVideo;
         setHovered(true)
         measure()
       }}
+      onTouchStart={() => {
+        // 触屏没有 hover: 点按候选卡即可查看真实显示尺寸, 点其他卡切换
+        if (!enabled) return
+        setHovered(true)
+        measure()
+      }}
       onMouseLeave={() => {
         setHovered(false)
         report(null)
