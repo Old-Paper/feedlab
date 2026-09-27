@@ -421,9 +421,22 @@ async function fetchYouTube() {
   }
   // 我的世界分区: 默认排序搜索取高播放(>=30万) + 按上传时间排序取低播放(<5万)
   const minecraft = []
+  // sleep 已在 low 段定义
+  const retryParse = async (url) => {
+    let entries = null
+    for (let attempt = 0; attempt < 2 && entries === null; attempt++) {
+      await sleep(900)
+      try {
+        entries = await parsePage(url)
+      } catch {
+        entries = null
+      }
+    }
+    return entries ?? []
+  }
   try {
     const mcSeen = new Set()
-    const hotEntries = await parsePage('https://www.youtube.com/results?search_query=minecraft')
+    const hotEntries = await retryParse('https://www.youtube.com/results?search_query=minecraft')
     for (const mapped of hotEntries) {
       if (minecraft.length >= 10) break
       if (!mapped.title || !mapped.channel || mapped.durationSec <= 0) continue
@@ -432,7 +445,7 @@ async function fetchYouTube() {
       mcSeen.add(mapped.id)
       minecraft.push(mapped)
     }
-    const lowEntries = await parsePage('https://www.youtube.com/results?search_query=minecraft&sp=CAI')
+    const lowEntries = await retryParse('https://www.youtube.com/results?search_query=minecraft&sp=CAI')
     let taken = 0
     for (const mapped of lowEntries) {
       if (minecraft.length >= LOW_N || taken >= 8) break
