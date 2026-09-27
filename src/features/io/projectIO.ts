@@ -28,13 +28,14 @@ export interface AllProjectsExport {
   projects: ProjectExport[]
 }
 
-function blobToDataURL(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error('读取图片数据失败'))
-    reader.readAsDataURL(blob)
-  })
+async function blobToDataURL(blob: Blob): Promise<string> {
+  const buf = new Uint8Array(await blob.arrayBuffer())
+  let binary = ''
+  const chunk = 0x8000
+  for (let i = 0; i < buf.length; i += chunk) {
+    binary += String.fromCharCode(...buf.subarray(i, i + chunk))
+  }
+  return `data:${blob.type || 'application/octet-stream'};base64,${btoa(binary)}`
 }
 
 function sanitizeFilename(name: string): string {
@@ -51,11 +52,12 @@ export function downloadJSON(data: unknown, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 2000)
 }
 
-export async function exportProjectToFile(projectId: string): Promise<string> {
+/** 读取项目与其全部图片资源, 组装为可序列化的导出结构(不含下载动作, 便于测试)。 */
+export async function buildProjectExport(projectId: string): Promise<ProjectExport> {
   const project = await projectRepository.get(projectId)
   if (!project) throw new Error('项目不存在')
   const assets = await assetRepository.listByProject(projectId)
-  const exported: ProjectExport = {
+  return {
     format: 'feedlab.project',
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -72,7 +74,11 @@ export async function exportProjectToFile(projectId: string): Promise<string> {
       })),
     ),
   }
-  const filename = `${sanitizeFilename(project.name)}.project.json`
+}
+
+export async function exportProjectToFile(projectId: string): Promise<string> {
+  const exported = await buildProjectExport(projectId)
+  const filename = `${sanitizeFilename(exported.project.name)}.project.json`
   downloadJSON(exported, filename)
   return filename
 }
@@ -81,24 +87,7 @@ export async function exportAllProjects(): Promise<string> {
   const projects = await projectRepository.list()
   const exports: ProjectExport[] = []
   for (const p of projects) {
-    const assets = await assetRepository.listByProject(p.id)
-    exports.push({
-      format: 'feedlab.project',
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      project: p,
-      assets: await Promise.all(
-        assets.map(async (a) => ({
-          id: a.id,
-          kind: a.kind,
-          mime: a.mime,
-          name: a.name,
-          width: a.width,
-          height: a.height,
-          data: await blobToDataURL(a.blob),
-        })),
-      ),
-    })
+    exports.push(await buildProjectExport(p.id))
   }
   const payload: AllProjectsExport = {
     format: 'feedlab.all',
@@ -174,7 +163,7 @@ async function dbWrite(project: Project, exp: ProjectExport, idMap: Map<string, 
   await db.projects.put(project)
 }
 
-function remapAssetRefs(project: Project, map: Map<string, string>): void {
+export function remapAssetRefs(project: Project, map: Map<string, string>): void {
   for (const t of project.thumbnails) {
     t.assetId = map.get(t.assetId) ?? t.assetId
   }
@@ -219,7 +208,7 @@ export async function importProjectsFromFile(file: File): Promise<ImportSummary>
   throw new Error('无法识别的文件格式:缺少 feedlab.project 标识')
 }
 
-function validateProject(p: Project): void {
+export function validateProject(p: Project): void {
   if (typeof p !== 'object' || p === null) throw new Error('项目数据无效')
   if (!Array.isArray(p.thumbnails) || !Array.isArray(p.titles) || !Array.isArray(p.candidates)) {
     throw new Error('项目数据不完整:缺少 thumbnails / titles / candidates')
